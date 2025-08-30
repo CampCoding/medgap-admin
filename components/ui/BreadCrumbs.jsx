@@ -18,7 +18,6 @@ const BreadcrumbsShowcase = ({
   variant = "default",
   className = "",
 }) => {
- 
   const BreadcrumbItem = ({ item, isLast, variant = "default" }) => {
     const IconComponent = item.icon;
 
@@ -43,7 +42,7 @@ const BreadcrumbsShowcase = ({
           return {
             link: `inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
               item.current
-                ? "text-white shadow-lg transform scale-105"
+                ? "text-white shadow-lg transform scale-105 !bg-[#075260]"
                 : "hover:scale-105 border border-opacity-20"
             }`,
             linkStyle: item.current
@@ -52,8 +51,8 @@ const BreadcrumbsShowcase = ({
             hoverStyle: !item.current
               ? {
                   backgroundColor: "rgba(139, 92, 246, 0.05)",
-                  color: "#8B5CF6",
-                  borderColor: "#8B5CF6",
+                  color: "#075260",
+                  borderColor: "#075260",
                 }
               : {},
           };
@@ -84,7 +83,6 @@ const BreadcrumbsShowcase = ({
           };
       }
     };
-
     const styles = getItemStyles();
 
     return (

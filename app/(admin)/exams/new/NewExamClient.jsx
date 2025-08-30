@@ -579,7 +579,7 @@ const NewExamClient = () => {
                     <div className="mb-8">
                       <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center">
-                          <div className="p-3 rounded-xl mr-4 bg-purple-600">
+                          <div className="p-3 rounded-xl mr-4 bg-[#075260]">
                             <HelpCircle className="w-6 h-6 text-white" />
                           </div>
                           <div>
@@ -621,7 +621,7 @@ const NewExamClient = () => {
                                   <div
                                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                                       isActive
-                                        ? "bg-purple-600 text-white shadow-lg scale-110"
+                                        ? "bg-[#075260] text-white shadow-lg scale-110"
                                         : isCompleted
                                         ? "bg-green-500 text-white"
                                         : "bg-gray-200 text-gray-500"
@@ -637,7 +637,7 @@ const NewExamClient = () => {
                                     <div
                                       className={`text-sm font-medium ${
                                         isActive
-                                          ? "text-purple-600"
+                                          ? "text-[#075260]"
                                           : isCompleted
                                           ? "text-green-600"
                                           : "text-gray-500"
@@ -1029,7 +1029,7 @@ const NewExamClient = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Tips */}
-            <div className="bg-gradient-to-br from-purple-600 to-cyan-600 rounded-2xl p-6 !text-white shadow-xl">
+            <div className="bg-gradient-to-br from-[#075260] to-[#0793b0] rounded-2xl p-6 !text-white shadow-xl">
               <div className="flex items-center mb-4">
                 <Lightbulb className="w-6 h-6 mr-3" />
                 <h3 className="text-lg font-bold text-white">Quick Tips</h3>

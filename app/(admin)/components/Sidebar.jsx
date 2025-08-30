@@ -152,17 +152,14 @@ export default function Sidebar() {
             className="group flex items-center space-x-4 transition-transform duration-300 hover:scale-105"
           >
             <div className="relative">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:shadow-purple-500/25 transition-all duration-300 transform group-hover:rotate-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-[#075260] via-[#075260] to-[#0793b0] rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-2xl transition-all duration-300">
                 <span className="text-white font-bold text-xl">M</span>
               </div>
-              <div className="absolute -inset-2 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl opacity-20 group-hover:opacity-40 transition-all duration-300 blur-lg"></div>
-              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl group-hover:from-white/30 transition-all duration-300"></div>
+              <div className="absolute -inset-2 bg-gradient-to-br from-[#075260] via-[#075260] to-[#0793b0] rounded-2xl opacity-20 blur-lg"></div>
             </div>
-            <div>
-              <span className="text-3xl font-black bg-gradient-to-r from-gray-900 via-purple-800 to-blue-800 bg-clip-text text-transparent">
-                MedGap
-              </span>
-            </div>
+            <span className="text-3xl font-black bg-gradient-to-r from-gray-900 via-[#075260] to-[#0793b0] bg-clip-text text-transparent">
+              MedGap
+            </span>
           </Link>
         </div>
       </div>
@@ -247,7 +244,7 @@ export default function Sidebar() {
               {item.badge && (
                 <span
                   className="ml-auto px-2 py-1 text-xs rounded-full text-white"
-                  style={{ backgroundColor: "#8B5CF6" }}
+                  style={{ backgroundColor: "#075260" }}
                 >
                   {item.badge}
                 </span>
@@ -255,7 +252,10 @@ export default function Sidebar() {
             </Link>
           );
         })}
-         <Link href={"/login"} className="absolute bottom-0 flex gap-3 text-center !bg-red-700/20 font-semibold  items-center text-red-700 w-full p-4 ">
+        <Link
+          href={"/login"}
+          className="absolute bottom-0 flex gap-3 text-center !bg-red-700/20 font-semibold  items-center text-red-700 w-full p-4 "
+        >
           <LogOut /> Log Out
         </Link>
       </nav>
@@ -287,7 +287,7 @@ const RenderNavs = ({ items, setActiveTab, activeTab, selectedSubject }) => {
         {item.badge && (
           <span
             className="ml-auto px-2 py-1 text-xs rounded-full text-white"
-            style={{ backgroundColor: "#8B5CF6" }}
+            style={{ backgroundColor: "#075260" }}
           >
             {item.badge}
           </span>

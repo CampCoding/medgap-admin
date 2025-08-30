@@ -1,5 +1,4 @@
-
-"use client"
+"use client";
 
 import {
   Users,
@@ -20,15 +19,13 @@ import {
 import { useState } from "react";
 
 export default function Topbar() {
-    const [notifications, setNotifications] = useState(3);
-  
+  const [notifications, setNotifications] = useState(3);
+
   return (
     <header className=" shadow-2xl bg-background  border-b-2 border-accent/30 border-dashed px-8 py-4 ml-64">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-text">
-            Dashboard
-          </h2>
+          <h2 className="text-3xl font-bold text-text">Dashboard</h2>
           <p className="text-gray-600 mt-1">Welcome back, Admin</p>
         </div>
 
@@ -47,7 +44,7 @@ export default function Topbar() {
             {notifications > 0 && (
               <span
                 className="absolute -top-1 -right-1 w-4 h-4 text-xs text-white rounded-full flex items-center justify-center"
-                style={{ backgroundColor: "#8B5CF6" }}
+                style={{ backgroundColor: "#075260" }}
               >
                 {notifications}
               </span>
