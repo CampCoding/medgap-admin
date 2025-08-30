@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+/* RTL افتراضي داخل هذا المحرر */
+.ql-rtl .ql-editor {
+  direction: rtl;
+  text-align: right;
+}
+
+/* خلي الـ placeholder يبدأ من اليمين */
+.ql-rtl .ql-editor.ql-blank::before {
+  left: auto;
+  right: 12px; /* عدّل المسافة حسب ذوقك */
+  text-align: right;
+}
