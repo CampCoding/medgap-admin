@@ -8,6 +8,7 @@ import QuestionReducer from '../features/questionsSlice';
 import UnitReducer from '../features/unitsSlice';
 import FlashcardReducer from '../features/flashcardsSlice';
 import EbookReducer from '../features/ebookSlice';
+import  StudentReducer from '../features/studentSlice';
 
 export const rootReducers = combineReducers({
   login : LoginReducer,
@@ -18,5 +19,6 @@ export const rootReducers = combineReducers({
   units :UnitReducer,
   flashcards : FlashcardReducer,
   ebooks : EbookReducer,
-  reviwers : ReviewerReducer
+  reviwers : ReviewerReducer,
+  student: StudentReducer
 });

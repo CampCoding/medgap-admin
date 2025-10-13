@@ -3,6 +3,7 @@ import Cookies from 'js-cookie'
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { conifgs } from '../../config';
+import { ToastContainer } from 'react-toastify';
 
 export default function AuthLayout({ children }) {
   const [isLoading, setIsLoading] = useState(false);  // State to manage loading
@@ -24,5 +25,7 @@ export default function AuthLayout({ children }) {
     return <div>Loading...</div>;  // You can customize this with a spinner or something else
   }
 
-  return <div>{children}</div>;
+  return <div>{children}
+  <ToastContainer />
+  </div>;
 }

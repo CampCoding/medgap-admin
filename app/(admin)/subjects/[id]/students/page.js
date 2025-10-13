@@ -353,7 +353,7 @@ const StudentsManagement = () => {
               loading={loading}
             >
               Refresh
-            </AntButton>
+            </AntButton> */}
             <Button
               onClick={() => setAddStudentModal(true)}
               type="primary"
@@ -361,7 +361,7 @@ const StudentsManagement = () => {
               icon={<Plus className="w-5 h-5" />}
             >
               Add New Student
-            </Button> */}
+            </Button>
           </div>
         }
       />
@@ -663,7 +663,8 @@ const StudentsManagement = () => {
       </Modal>
 
       {/* Add Student Modal */}
-      <AddStudentModal
+      <AddStudentModal 
+      id={id}
         open={addStudentModal}
         onCancel={() => setAddStudentModal(false)}
         onSuccess={() => {
