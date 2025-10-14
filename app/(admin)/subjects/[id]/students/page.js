@@ -114,6 +114,7 @@ const StudentsManagement = () => {
     };
 
     return {
+      modules:apiStudent.modules,
       id: apiStudent.student_id,
       name: apiStudent.full_name,
       email: apiStudent.email,
@@ -456,6 +457,7 @@ const StudentsManagement = () => {
             />
           ) : (
             <StudentsCards
+            id={id}
               students={filteredStudents}
               loading={loading}
               onView={handleViewStudent}
