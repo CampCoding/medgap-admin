@@ -437,14 +437,14 @@ const TopicsPage = () => {
               <Button type="secondary" icon={<Download className="w-4 h-4" />}>
                 Export
               </Button>
-              <Button
+              {/* <Button
                 onClick={() => setAddTopicModal(true)}
                 type="primary"
                 size="large"
                 icon={<Plus className="w-5 h-5" />}
               >
                 Add New Topic
-              </Button>
+              </Button> */}
             </div>
           }
         />

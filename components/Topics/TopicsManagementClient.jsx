@@ -188,13 +188,13 @@ const TopicsManagementClient = ({ subjectId, unitId }) => {
             <Button type="secondary" icon={<Download className="w-4 h-4" />}>
               Export
             </Button>
-            <Button
+            {/* <Button
               type="primary"
               size="large"
               icon={<Plus className="w-5 h-5" />}
             >
               Add New Topic
-            </Button>
+            </Button> */}
           </div>
         }
       />

@@ -27,7 +27,7 @@ export const handleGetAllTopics = createAsyncThunk(
     if (search) params.append("search", search);
     if (unit_id) params.append("unit_id", unit_id);
     const response = await fetchData({
-      url: `${userApi.routes?.topics}?${params.toString()}`,
+      url: `${userApi.routes?.topics}/all?${params.toString()}`,
       method: "GET",
     });
     return response;

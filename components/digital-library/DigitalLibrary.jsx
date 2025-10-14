@@ -26,8 +26,6 @@ import {
   CheckCircle,
   AlertTriangle,
   RotateCcw,
-  Pencil,
-  Check,
 } from "lucide-react";
 import {
   Input,
@@ -37,7 +35,6 @@ import {
   Modal,
   Form,
   Tooltip,
-  Popconfirm,
 } from "antd";
 import BreadcrumbsShowcase from "../ui/BreadCrumbs";
 import Button from "../atoms/Button";
@@ -144,7 +141,9 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
 
   useEffect(() => {
     if (!id) return;
-    dispatch(handleGetAllEbooks({ subject_id: id })).unwrap().catch(() => {});
+    dispatch(handleGetAllEbooks({ subject_id: id }))
+      .unwrap()
+      .catch(() => {});
   }, [dispatch, id]);
 
   // adapt server list into the left-side list
@@ -483,7 +482,6 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     form.append("author", vals.author || "");
     form.append("subject_id", id);
 
-    // Add custom indices to form data - include order
     if (customIndex.length > 0) {
       customIndex.forEach((item, index) => {
         form.append(`index[${index}][title]`, item.title);
@@ -497,7 +495,6 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
 
       const r = res?.data ?? res ?? {};
 
-      // Handle the response indices properly
       const responseIndices = Array.isArray(r.indecies)
         ? r.indecies.map((idx) => ({
             id: idx.index_id,
@@ -540,8 +537,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
 
       toast.success(res?.message || "Document created");
       axios.get(
-        (conifgs?.LIVE_BASE_URL || "").toString() +
-          `e-books/list?subject_id=${id}`
+        (conifgs?.LIVE_BASE_URL || "").toString() + `e-books/list?subject_id=${id}`
       );
     } catch (e) {
       console.error(e);
@@ -560,7 +556,6 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
       status: currentDoc.status || "active",
     });
 
-    // Make a mutable copy of indices for editing
     setCustomIndex(
       (currentDoc.customIndices || []).map((x) => ({
         ...x,
@@ -596,7 +591,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     },
   };
 
-  // Helpers to mutate a single index row
+  // Helpers to mutate a single index row (EDIT modal)
   const updateIndexField = (idx, field, value) => {
     setCustomIndex((prev) =>
       prev.map((item, i) =>
@@ -612,7 +607,6 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     );
   };
   const removeIndexRow = (idx) => {
-    // If it already exists on server (has id) mark as deleted; if new, just remove locally
     setCustomIndex((prev) => {
       const item = prev[idx];
       if (item?.id) {
@@ -624,7 +618,30 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     });
   };
 
-  const addIndexRow = () => {
+  const addIndexRowCreate = () => {
+    const title = (newIndexEntry.title || "").trim();
+    const pageNum = parseInt(String(newIndexEntry.page), 10);
+    const orderNum = parseInt(String(newIndexEntry.order), 10) || 0;
+
+    if (!title) {
+      message.error("Index title is required");
+      return;
+    }
+    if (!pageNum || pageNum < 1 || pageNum > (previewTotalPages || 100000)) {
+      message.error(
+        `Please enter a valid page number between 1 and ${previewTotalPages || 100000}`
+      );
+      return;
+    }
+    setCustomIndex((prev) => [
+      ...prev,
+      { id: null, title, page: pageNum, order: orderNum, type: "custom" },
+    ]);
+    setNewIndexEntry({ title: "", page: "", order: 0 });
+    message.success("Index entry added");
+  };
+
+  const addIndexRowEdit = () => {
     const title = (newIndexEntry.title || "").trim();
     const pageNum = parseInt(String(newIndexEntry.page), 10);
     const orderNum = parseInt(String(newIndexEntry.order), 10) || 0;
@@ -643,7 +660,16 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     }
     setCustomIndex((prev) => [
       ...prev,
-      { id: null, title, page: pageNum, order: orderNum, type: "custom", _isNew: true, _deleted: false, _dirty: true },
+      {
+        id: null,
+        title,
+        page: pageNum,
+        order: orderNum,
+        type: "custom",
+        _isNew: true,
+        _deleted: false,
+        _dirty: true,
+      },
     ]);
     setNewIndexEntry({ title: "", page: "", order: 0 });
     message.success("Index entry added");
@@ -660,21 +686,15 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     if (editPDF?.file) form.append("file", editPDF.file);
     if (editThumb?.file) form.append("thumbnail", editThumb.file);
 
-    // ✅ SEND EDITABLE INDICES USING `index[...][...]` KEYS
-    // For each row we include optional index_id and _delete flag if marked for deletion.
     if (customIndex.length > 0) {
       customIndex.forEach((item, i) => {
-        // If an existing item marked deleted OR edited/new, include it:
         if (item.id != null) {
           form.append(`index[${i}][index_id]`, String(item.id));
         }
         form.append(`index[${i}][title]`, item.title);
         form.append(`index[${i}][page]`, String(item.page));
         form.append(`index[${i}][order]`, String(item.order || 0));
-        if (item._deleted) {
-          // This flag name often used by backends — adapt if your API expects a different key
-          form.append(`index[${i}][_delete]`, "1");
-        }
+        if (item._deleted) form.append(`index[${i}][_delete]`, "1");
       });
     }
 
@@ -685,7 +705,6 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
 
       const r = res?.data ?? res ?? {};
 
-      // Handle updated indices from API, if provided
       const updatedIndices = Array.isArray(r.indecies)
         ? r.indecies.map((idx) => ({
             id: idx.index_id,
@@ -694,8 +713,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
             order: Number(idx.order) || 0,
             type: "custom",
           }))
-        : // fallback: prune deleted ones from local state
-          customIndex
+        : customIndex
             .filter((x) => !x._deleted)
             .map((x) => ({
               id: x.id || x.index_id || null,
@@ -742,10 +760,8 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
           dispatch(handleGetAllEbooks({ subject_id: id }));
           setOpenDeleteModal(false);
 
-          // Remove from local state
           setDocuments((prev) => prev.filter((d) => d.id !== currentDoc.id));
 
-          // Update selected document if needed
           const remaining = documents.filter((d) => d.id !== currentDoc.id);
           setSelectedDocId(remaining[0]?.id ?? null);
         } else {
@@ -797,23 +813,22 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
           <div className="flex items-center gap-3">
             {currentDoc && (
               <>
-                <Button
-                  type="default"
-                  icon={<Edit className="w-4 h-4" />}
-                  onClick={openEdit}
-                >
-                  Edit
+                <Button onClick={openEdit}>
+                  <span className="inline-flex items-center gap-2">
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </span>
                 </Button>
-                <Button
-                  type="default"
-                  icon={<Trash2 className="w-4 h-4" />}
-                  onClick={() => setOpenDeleteModal(true)}
-                >
-                  Delete
+                <Button onClick={() => setOpenDeleteModal(true)}>
+                  <span className="inline-flex items-center gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </span>
                 </Button>
               </>
             )}
             <button
+              type="button"
               onClick={() => setUploadModal(true)}
               className="inline-flex gap-2 items-center justify-center font-medium rounded-lg transition-all duration-200 px-6 py-3 bg-[#0F7490] hover:bg-[#0F7490]/90 text-white shadow-lg hover:shadow-xl"
             >
@@ -885,12 +900,15 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
           {/* Toolbar */}
           <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button
-                type="text"
-                icon={<ChevronLeft className="w-4 h-4" />}
+              <button
+                type="button"
+                className="rounded p-2 hover:bg-gray-100"
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              />
+                title="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
               <div className="flex items-center gap-2">
                 <Input
                   value={currentPage}
@@ -904,14 +922,17 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                   of {totalPages || 0}
                 </span>
               </div>
-              <Button
-                type="text"
-                icon={<ChevronRight className="w-4 h-4" />}
+              <button
+                type="button"
+                className="rounded p-2 hover:bg-gray-100"
                 disabled={currentPage >= (totalPages || 0)}
                 onClick={() =>
                   setCurrentPage((p) => Math.min(totalPages || 0, p + 1))
                 }
-              />
+                title="Next page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
 
               <div className="flex items-center gap-2 border-l pl-4 ml-2">
                 <Input
@@ -928,9 +949,9 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                   size="small"
                   prefix={<Hash className="w-3 h-3 text-gray-400" />}
                 />
-                <Button
-                  type="text"
-                  icon={<CornerDownRight className="w-4 h-4" />}
+                <button
+                  type="button"
+                  className="rounded p-2 hover:bg-gray-100"
                   onClick={() => {
                     const n = parseInt(goToPageValue, 10);
                     if (n >= 1 && n <= totalPages) setCurrentPage(n);
@@ -938,35 +959,52 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                   }}
                   disabled={!goToPageValue}
                   title="Go to page"
-                />
+                >
+                  <CornerDownRight className="w-4 h-4" />
+                </button>
               </div>
 
-              <Button
-                type={showPageIndex ? "primary" : "text"}
-                icon={<List className="w-4 h-4" />}
+              <button
+                type="button"
+                className={`rounded px-3 py-2 text-sm ${
+                  showPageIndex ? "bg-blue-600 text-white" : "hover:bg-gray-100"
+                }`}
                 onClick={() => setShowPageIndex((s) => !s)}
                 title="Toggle page index"
-              />
+              >
+                <span className="inline-flex items-center gap-2">
+                  <List className="w-4 h-4" />
+                  Index
+                </span>
+              </button>
 
-              <Button
-                type={
+              <button
+                type="button"
+                className={`rounded px-3 py-2 text-sm ${
                   bookmarks.find((b) => b.page === currentPage)
-                    ? "primary"
-                    : "text"
-                }
-                icon={<Bookmark className="w-4 h-4" />}
+                    ? "bg-blue-600 text-white"
+                    : "hover:bg-gray-100"
+                }`}
                 onClick={toggleBookmark}
                 title="Bookmark page"
-              />
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Bookmark className="w-4 h-4" />
+                  Bookmark
+                </span>
+              </button>
             </div>
 
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Button
-                  type="text"
-                  icon={<ZoomOut className="w-4 h-4" />}
+                <button
+                  type="button"
+                  className="rounded p-2 hover:bg-gray-100"
                   onClick={() => setZoom((z) => Math.max(25, z - 25))}
-                />
+                  title="Zoom out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
                 <Select
                   value={`${zoom}%`}
                   onChange={(v) => setZoom(parseInt(String(v), 10))}
@@ -979,20 +1017,26 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                     </Option>
                   ))}
                 </Select>
-                <Button
-                  type="text"
-                  icon={<ZoomIn className="w-4 h-4" />}
+                <button
+                  type="button"
+                  className="rounded p-2 hover:bg-gray-100"
                   onClick={() => setZoom((z) => Math.min(200, z + 25))}
-                />
+                  title="Zoom in"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
               </div>
 
-              <Button
-                type="text"
-                icon={<Download className="w-4 h-4" />}
+              <button
+                type="button"
+                className="rounded p-2 hover:bg-gray-100"
                 onClick={() =>
                   currentDoc?.pdfUrl && window.open(currentDoc.pdfUrl, "_blank")
                 }
-              />
+                title="Open original"
+              >
+                <Download className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
@@ -1009,27 +1053,36 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
               </div>
               <div className="flex items-center gap-2">
                 <Tooltip title={copySuccess ? "Copied!" : "Copy text"}>
-                  <Button
-                    size="small"
-                    type={copySuccess ? "primary" : "default"}
-                    icon={
-                      copySuccess ? (
-                        <CheckCircle className="w-4 h-4" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )
-                    }
+                  <button
+                    type="button"
+                    className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm ${
+                      copySuccess
+                        ? "bg-blue-600 text-white"
+                        : "border border-gray-300 hover:bg-gray-50"
+                    }`}
                     onClick={copySelectedText}
                   >
-                    {copySuccess ? "Copied" : "Copy"}
-                  </Button>
+                    {copySuccess ? (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy
+                      </>
+                    )}
+                  </button>
                 </Tooltip>
-                <Button
-                  size="small"
-                  type="text"
-                  icon={<X className="w-4 h-4" />}
+                <button
+                  type="button"
+                  className="rounded p-2 hover:bg-gray-100"
                   onClick={() => setSelectedText("")}
-                />
+                  title="Clear selection"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             </div>
           )}
@@ -1076,12 +1129,13 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                   <h3 className="text-lg font-semibold text-gray-800">
                     Page Index
                   </h3>
-                  <Button
-                    type="text"
-                    icon={<X className="w-4 h-4" />}
+                  <button
+                    type="button"
+                    className="rounded p-2 hover:bg-gray-100"
                     onClick={() => setShowPageIndex(false)}
-                    size="small"
-                  />
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
 
                 {/* Search in Index */}
@@ -1201,12 +1255,14 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
             <button
+              type="button"
               onClick={() => setOpenDeleteModal(false)}
               className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleDelete}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
               disabled={delete_ebook_loading}
@@ -1236,12 +1292,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
         footer={null}
         width={900}
       >
-        <Form
-          form={uploadForm}
-          layout="vertical"
-          onFinish={handleCreate}
-          className="py-4"
-        >
+        <Form form={uploadForm} layout="vertical" onFinish={handleCreate} className="py-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* left form */}
             <div>
@@ -1250,23 +1301,15 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                 name="title"
                 rules={[{ required: true, message: "Title is required" }]}
               >
-                <Input
-                  placeholder="Medical Anatomy Fundamentals"
-                  size="large"
-                />
+                <Input placeholder="Medical Anatomy Fundamentals" size="large" />
               </Form.Item>
 
               <Form.Item
                 label="Description"
                 name="description"
-                rules={[
-                  { required: true, message: "Description is required" },
-                ]}
+                rules={[{ required: true, message: "Description is required" }]}
               >
-                <TextArea
-                  rows={4}
-                  placeholder="Comprehensive guide to human anatomy…"
-                />
+                <TextArea rows={4} placeholder="Comprehensive guide to human anatomy…" />
               </Form.Item>
 
               <Form.Item label="Author" name="author">
@@ -1296,11 +1339,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
             {/* right: uploads & custom index */}
             <div className="border-l border-gray-200 pl-6">
               <Form.Item label="Thumbnail Image" required>
-                <AntUpload.Dragger
-                  {...handleImageUpload}
-                  multiple={false}
-                  style={{ height: 120 }}
-                >
+                <AntUpload.Dragger {...handleImageUpload} multiple={false} style={{ height: 120 }}>
                   {uploadedImage ? (
                     <div className="flex items-center justify-center h-full">
                       <img
@@ -1308,9 +1347,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         alt="Preview"
                         className="h-16 w-12 object-cover rounded"
                       />
-                      <div className="ml-2 text-sm text-green-600">
-                        Image selected
-                      </div>
+                      <div className="ml-2 text-sm text-green-600">Image selected</div>
                     </div>
                   ) : (
                     <>
@@ -1323,11 +1360,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
               </Form.Item>
 
               <Form.Item label="PDF Document" required>
-                <AntUpload.Dragger
-                  {...handlePDFUpload}
-                  multiple={false}
-                  style={{ height: 120 }}
-                >
+                <AntUpload.Dragger {...handlePDFUpload} multiple={false} style={{ height: 120 }}>
                   {uploadedPDF ? (
                     <div className="flex flex-col items-center justify-center h-full">
                       <FileText className="w-8 h-8 text-green-500 mb-2" />
@@ -1336,17 +1369,13 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                       </p>
                       <p className="text-xs text-gray-500">
                         {uploadedPDF.size} •{" "}
-                        {previewTotalPages
-                          ? `${previewTotalPages} pages`
-                          : "Loading…"}
+                        {previewTotalPages ? `${previewTotalPages} pages` : "Loading…"}
                       </p>
                     </div>
                   ) : (
                     <>
                       <UploadIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm font-medium">
-                        Click or drag PDF here
-                      </p>
+                      <p className="text-sm font-medium">Click or drag PDF here</p>
                       <p className="text-xs text-gray-500">PDF up to 50MB</p>
                     </>
                   )}
@@ -1357,23 +1386,19 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
               <div className="mt-4 border-t pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700">
-                      Custom Index
-                    </h4>
-                    <p className="text-xs text-gray-500">
-                      Add custom table of contents entries
-                    </p>
+                    <h4 className="text-sm font-medium text-gray-700">Custom Index</h4>
+                    <p className="text-xs text-gray-500">Add custom table of contents entries</p>
                   </div>
-                  <Button
-                    type="default"
-                    size="small"
-                    icon={<Plus className="w-3 h-3" />}
-                    onClick={() =>
-                      setShowCustomIndexForm(!showCustomIndexForm)
-                    }
+
+                  {/* html button to avoid form submit */}
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomIndexForm(!showCustomIndexForm)}
+                    className="inline-flex items-center gap-2 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
                   >
+                    <Plus className="w-3 h-3" />
                     {showCustomIndexForm ? "Hide" : "Add Index"}
-                  </Button>
+                  </button>
                 </div>
 
                 {/* Add Index Form */}
@@ -1384,10 +1409,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         placeholder="Index title (e.g., Chapter 1: Introduction)"
                         value={newIndexEntry.title}
                         onChange={(e) =>
-                          setNewIndexEntry((s) => ({
-                            ...s,
-                            title: e.target.value,
-                          }))
+                          setNewIndexEntry((s) => ({ ...s, title: e.target.value }))
                         }
                         size="small"
                       />
@@ -1399,10 +1421,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           max={previewTotalPages}
                           value={newIndexEntry.page}
                           onChange={(e) =>
-                            setNewIndexEntry((s) => ({
-                              ...s,
-                              page: e.target.value,
-                            }))
+                            setNewIndexEntry((s) => ({ ...s, page: e.target.value }))
                           }
                           className="w-20"
                           size="small"
@@ -1412,22 +1431,20 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           type="number"
                           value={newIndexEntry.order}
                           onChange={(e) =>
-                            setNewIndexEntry((s) => ({
-                              ...s,
-                              order: e.target.value,
-                            }))
+                            setNewIndexEntry((s) => ({ ...s, order: e.target.value }))
                           }
                           className="w-20"
                           size="small"
                         />
-                        <Button
-                          type="primary"
-                          icon={<Plus className="w-3 h-3" />}
-                          onClick={addIndexRow}
-                          size="small"
+                        {/* html button to avoid form submit */}
+                        <button
+                          type="button"
+                          onClick={addIndexRowCreate}
+                          className="inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700"
                         >
+                          <Plus className="w-3 h-3" />
                           Add
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1446,24 +1463,21 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           className="flex items-center justify-between p-2 border-b last:border-b-0 hover:bg-gray-50"
                         >
                           <div className="flex-1">
-                            <div className="text-sm text-gray-800">
-                              {item.title}
-                            </div>
+                            <div className="text-sm text-gray-800">{item.title}</div>
                             <div className="text-xs text-gray-500">
                               Page {item.page} • Order: {item.order || 0}
                             </div>
                           </div>
-                          <Button
-                            type="text"
-                            danger
-                            size="small"
-                            icon={<Trash2 className="w-3 h-3" />}
+                          {/* html button to avoid form submit */}
+                          <button
+                            type="button"
+                            className="text-red-600 hover:bg-red-50 rounded px-2 py-1"
                             onClick={() =>
-                              setCustomIndex((prev) =>
-                                prev.filter((_, i) => i !== index)
-                              )
+                              setCustomIndex((prev) => prev.filter((_, i) => i !== index))
                             }
-                          />
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -1500,7 +1514,8 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
           </div>
 
           <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-            <Button
+            <button
+              type="button"
               onClick={() => {
                 setUploadModal(false);
                 uploadForm.resetFields();
@@ -1512,9 +1527,10 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                 setShowCustomIndexForm(false);
                 setNewIndexEntry({ title: "", page: "", order: 0 });
               }}
+              className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50"
             >
               Cancel
-            </Button>
+            </button>
             <button
               className="inline-flex items-center justify-center font-medium rounded-lg px-6 py-3 bg-[#0F7490] hover:bg-[#0F7490]/90 text-white shadow disabled:opacity-50"
               type="submit"
@@ -1544,11 +1560,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
               <Form.Item label="Title" name="title" rules={[{ required: true }]}>
                 <Input />
               </Form.Item>
-              <Form.Item
-                label="Description"
-                name="description"
-                rules={[{ required: true }]}
-              >
+              <Form.Item label="Description" name="description" rules={[{ required: true }]}>
                 <TextArea rows={4} />
               </Form.Item>
               <div className="grid grid-cols-2 gap-4">
@@ -1569,37 +1581,21 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
             <div className="border-l border-gray-200 pl-6">
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <div className="text-sm font-medium mb-1">
-                    Replace PDF (optional)
-                  </div>
-                  <AntUpload.Dragger
-                    {...editPDFUpload}
-                    multiple={false}
-                    style={{ height: 110 }}
-                  >
+                  <div className="text-sm font-medium mb-1">Replace PDF (optional)</div>
+                  <AntUpload.Dragger {...editPDFUpload} multiple={false} style={{ height: 110 }}>
                     {editPDF ? (
-                      <div className="py-6 text-green-600">
-                        {editPDF.file.name}
-                      </div>
+                      <div className="py-6 text-green-600">{editPDF.file.name}</div>
                     ) : (
                       <>
                         <UploadIcon className="w-7 h-7 text-gray-400 mx-auto mb-2" />
-                        <div className="text-xs text-gray-500">
-                          Drop PDF here to replace
-                        </div>
+                        <div className="text-xs text-gray-500">Drop PDF here to replace</div>
                       </>
                     )}
                   </AntUpload.Dragger>
                 </div>
                 <div>
-                  <div className="text-sm font-medium mb-1">
-                    Replace Thumbnail (optional)
-                  </div>
-                  <AntUpload.Dragger
-                    {...editThumbUpload}
-                    multiple={false}
-                    style={{ height: 110 }}
-                  >
+                  <div className="text-sm font-medium mb-1">Replace Thumbnail (optional)</div>
+                  <AntUpload.Dragger {...editThumbUpload} multiple={false} style={{ height: 110 }}>
                     {editThumb ? (
                       <div className="flex items-center justify-center h-full">
                         <img
@@ -1607,16 +1603,12 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           className="h-16 w-12 object-cover rounded"
                           alt="Thumbnail preview"
                         />
-                        <div className="ml-2 text-sm text-green-600">
-                          Selected
-                        </div>
+                        <div className="ml-2 text-sm text-green-600">Selected</div>
                       </div>
                     ) : (
                       <>
                         <ImageIcon className="w-7 h-7 text-gray-400 mx-auto mb-2" />
-                        <div className="text-xs text-gray-500">
-                          Drop image here to replace
-                        </div>
+                        <div className="text-xs text-gray-500">Drop image here to replace</div>
                       </>
                     )}
                   </AntUpload.Dragger>
@@ -1627,23 +1619,21 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
               <div className="mt-4 border-t pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700">
-                      Custom Index
-                    </h4>
+                    <h4 className="text-sm font-medium text-gray-700">Custom Index</h4>
                     <p className="text-xs text-gray-500">
                       Edit, delete, or add table of contents entries
                     </p>
                   </div>
-                  <Button
-                    type="default"
-                    size="small"
-                    icon={<Plus className="w-3 h-3" />}
-                    onClick={() =>
-                      setShowCustomIndexForm(!showCustomIndexForm)
-                    }
+
+                  {/* html button to avoid form submit */}
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomIndexForm(!showCustomIndexForm)}
+                    className="inline-flex items-center gap-2 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
                   >
+                    <Plus className="w-3 h-3" />
                     {showCustomIndexForm ? "Hide" : "Add Index"}
-                  </Button>
+                  </button>
                 </div>
 
                 {/* Add Index Form */}
@@ -1654,10 +1644,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         placeholder="Index title"
                         value={newIndexEntry.title}
                         onChange={(e) =>
-                          setNewIndexEntry((s) => ({
-                            ...s,
-                            title: e.target.value,
-                          }))
+                          setNewIndexEntry((s) => ({ ...s, title: e.target.value }))
                         }
                         size="small"
                       />
@@ -1669,10 +1656,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           max={editingDoc?.pages || 1000}
                           value={newIndexEntry.page}
                           onChange={(e) =>
-                            setNewIndexEntry((s) => ({
-                              ...s,
-                              page: e.target.value,
-                            }))
+                            setNewIndexEntry((s) => ({ ...s, page: e.target.value }))
                           }
                           className="w-20"
                           size="small"
@@ -1682,22 +1666,20 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           type="number"
                           value={newIndexEntry.order}
                           onChange={(e) =>
-                            setNewIndexEntry((s) => ({
-                              ...s,
-                              order: e.target.value,
-                            }))
+                            setNewIndexEntry((s) => ({ ...s, order: e.target.value }))
                           }
                           className="w-20"
                           size="small"
                         />
-                        <Button
-                          type="primary"
-                          icon={<Plus className="w-3 h-3" />}
-                          onClick={addIndexRow}
-                          size="small"
+                        {/* html button to avoid form submit */}
+                        <button
+                          type="button"
+                          onClick={addIndexRowEdit}
+                          className="inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700"
                         >
+                          <Plus className="w-3 h-3" />
                           Add
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1706,9 +1688,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                 {/* Editable list */}
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {customIndex.length === 0 && (
-                    <div className="text-xs text-gray-500">
-                      No custom indices yet.
-                    </div>
+                    <div className="text-xs text-gray-500">No custom indices yet.</div>
                   )}
                   {customIndex.map((item, i) => (
                     <div
@@ -1721,9 +1701,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         <Input
                           value={item.title}
                           disabled={item._deleted}
-                          onChange={(e) =>
-                            updateIndexField(i, "title", e.target.value)
-                          }
+                          onChange={(e) => updateIndexField(i, "title", e.target.value)}
                           size="small"
                           className={item._deleted ? "line-through" : ""}
                         />
@@ -1760,38 +1738,36 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         <div className="flex items-center justify-end gap-2">
                           {!item._deleted ? (
                             <>
-                              <Tooltip title="Mark for delete">
-                                <Button
-                                  type="text"
-                                  danger
-                                  size="small"
-                                  icon={<Trash2 className="w-4 h-4" />}
-                                  onClick={() => toggleDeleteIndex(i)}
-                                />
-                              </Tooltip>
+                              {/* html button to avoid form submit */}
+                              <button
+                                type="button"
+                                className="text-red-600 hover:bg-red-50 rounded px-2 py-1"
+                                onClick={() => toggleDeleteIndex(i)}
+                                title="Mark for delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                               {!item.id && (
-                                <Tooltip title="Remove row">
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    onClick={() => removeIndexRow(i)}
-                                  >
-                                    Remove
-                                  </Button>
-                                </Tooltip>
+                                <button
+                                  type="button"
+                                  className="rounded px-2 py-1 hover:bg-gray-100 text-sm"
+                                  onClick={() => removeIndexRow(i)}
+                                  title="Remove row"
+                                >
+                                  Remove
+                                </button>
                               )}
                             </>
                           ) : (
-                            <Tooltip title="Undo delete">
-                              <Button
-                                type="default"
-                                size="small"
-                                icon={<RotateCcw className="w-4 h-4" />}
-                                onClick={() => toggleDeleteIndex(i)}
-                              >
-                                Restore
-                              </Button>
-                            </Tooltip>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-2 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
+                              onClick={() => toggleDeleteIndex(i)}
+                              title="Undo delete"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                              Restore
+                            </button>
                           )}
                         </div>
                       </div>
@@ -1809,21 +1785,24 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
           </div>
 
           <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
-            <Button
+            <button
+              type="button"
+              className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50"
               onClick={() => {
                 setEditOpen(false);
                 setCustomIndex([]);
               }}
             >
               Cancel
-            </Button>
-            <Button
-              type="primary"
+            </button>
+            <button
+              type="button"
               onClick={() => editForm.submit()}
+              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
               disabled={!!edit_ebook_loading}
             >
               {edit_ebook_loading ? "Saving…" : "Save Changes"}
-            </Button>
+            </button>
           </div>
         </Form>
       </Modal>
