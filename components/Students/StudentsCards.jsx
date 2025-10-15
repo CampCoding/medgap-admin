@@ -33,6 +33,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { handleGetAllModules, handleGetModuleStudents } from "@/features/modulesSlice";
+import { toast } from "react-toastify";
 
 /** helpers */
 const getGradeColor = (grade) => {
@@ -61,7 +62,7 @@ export default function StudentsCards({
   id,
   onView = () => {},
   onChangeStatus = () => {},
-  /** optional: parent refresh after add/delete */
+  /** parent refresher after add/delete */
   onModulesUpdated = () => {},
 }) {
   const dispatch = useDispatch();
@@ -82,6 +83,7 @@ export default function StudentsCards({
     () => list_module_data?.data?.modules || list_module_data?.modules || [],
     [list_module_data]
   );
+
   const moduleOptions = useMemo(
     () =>
       modulesArr.map((m) => ({
@@ -93,6 +95,15 @@ export default function StudentsCards({
       })),
     [modulesArr]
   );
+
+  // Only show modules that the student DOES NOT already have
+  const availableModuleOptions = useMemo(() => {
+    if (!selectedStudent) return moduleOptions;
+    const assignedIds = new Set(
+      (selectedStudent.modules || []).map((m) => m.module_id ?? m.id)
+    );
+    return moduleOptions.filter((opt) => !assignedIds.has(opt.value));
+  }, [moduleOptions, selectedStudent]);
 
   useEffect(() => {
     dispatch(handleGetAllModules());
@@ -121,12 +132,20 @@ export default function StudentsCards({
       message.error("Missing student id");
       return;
     }
+
+    // Extra safety: drop any id that might already be assigned
+    const assignedIds = new Set(
+      (selectedStudent.modules || []).map((m) => m.module_id ?? m.id)
+    );
+    const picked = (values.modules || []).filter((mId) => !assignedIds.has(mId));
+
     const payload = {
-      modules: values.modules || [],
+      modules: picked,
       student_id: Number(selectedStudent.id),
     };
+
     if (!payload.modules.length) {
-      message.warning("Please select at least one module");
+      message.warning("This student already has all selected modules.");
       return;
     }
 
@@ -135,24 +154,26 @@ export default function StudentsCards({
       const { data } = await axios.post(ADD_MODULES_ENDPOINT, payload, {
         headers: { "Content-Type": "application/json" },
       });
+      console.log(data);
       if (data?.status === "success" || data?.message) {
-        dispatch(handleGetModuleStudents({ id}))
+        // Refresh students (parent owns visible list)
+        dispatch(handleGetModuleStudents({ id }));
         message.success(data?.message || "Modules added successfully");
+        toast.success(data?.message || "Modules added successfully");
         setOpenModuleModal(false);
 
-        // Immediate UI update in the modules modal (no refresh needed)
+        // Immediate local UI update in this modal
         const addedObjs = payload.modules.map(toModuleObj);
         setSelectedStudent((prev) => {
           if (!prev) return prev;
           const prevList = Array.isArray(prev.modules) ? prev.modules : [];
-          // dedupe by module_id
           const ids = new Set(prevList.map((m) => m.module_id ?? m.id));
           const merged = [...prevList];
           for (const m of addedObjs) {
-            const id = m.module_id ?? m.id;
-            if (!ids.has(id)) {
+            const mid = m.module_id ?? m.id;
+            if (!ids.has(mid)) {
               merged.push(m);
-              ids.add(id);
+              ids.add(mid);
             }
           }
           return { ...prev, modules: merged };
@@ -161,6 +182,7 @@ export default function StudentsCards({
         onModulesUpdated(selectedStudent, { type: "add", modules: payload.modules });
       } else {
         message.error(data?.message || "Failed to add modules");
+        toast.error(data?.message || "Failed to add modules");
       }
     } catch (err) {
       const apiMsg =
@@ -189,13 +211,13 @@ export default function StudentsCards({
     try {
       const { data } = await axios.delete(DELETE_MODULE_ENDPOINT(moduleId), {
         headers: { "Content-Type": "application/json" },
-        // axios DELETE body => pass via { data: ... }
-        data: { student_id: Number(selectedStudent.id) },
+        data: { student_id: Number(selectedStudent.id) }, // axios DELETE body
       });
       if (data?.status === "success" || data?.message) {
         message.success(data?.message || "Module removed");
+        toast.success(data?.message || "Module removed");
 
-        // Immediate UI update in the modules modal
+        // Immediate UI update in this modal
         setSelectedStudent((prev) => {
           if (!prev) return prev;
           const filtered = (prev.modules || []).filter(
@@ -361,7 +383,7 @@ export default function StudentsCards({
               </div>
 
               {/* Status actions */}
-              <div className="flex items-center gap-2 mt-2">
+              {/* <div className="flex items-center gap-2 mt-2">
                 {s.status !== "blocked" ? (
                   <Button
                     danger
@@ -381,7 +403,7 @@ export default function StudentsCards({
                     Unblock
                   </Button>
                 )}
-              </div>
+              </div> */}
             </Card>
           </Col>
         ))}
@@ -425,11 +447,17 @@ export default function StudentsCards({
             <Select
               mode="multiple"
               allowClear
-              placeholder={modulesArr.length ? "Select modules…" : "Loading modules…"}
-              options={moduleOptions}
+              placeholder={
+                modulesArr.length
+                  ? availableModuleOptions.length
+                    ? "Select modules…"
+                    : "All available modules are already assigned"
+                  : "Loading modules…"
+              }
+              options={availableModuleOptions}
               optionFilterProp="label"
               maxTagCount="responsive"
-              disabled={!modulesArr.length}
+              disabled={!modulesArr.length || availableModuleOptions.length === 0}
             />
           </Form.Item>
         </Form>

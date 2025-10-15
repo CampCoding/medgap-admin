@@ -462,7 +462,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     },
   };
 
-  /* -------------- CREATE submit --------------- */
+  /* -------------- CREATE submit (SAFE) --------------- */
   const handleCreate = async (vals) => {
     if (!uploadedPDF?.file) return message.error("Please upload a PDF");
     if (!uploadedImage?.file) return message.error("Please upload a thumbnail");
@@ -493,6 +493,19 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     try {
       const res = await dispatch(handleCreateEbook({ body: form })).unwrap();
 
+      // ---- ONLY proceed on success ----
+      const statusVal = String(res?.status ?? res?.data?.status ?? "").toLowerCase();
+      const ok = statusVal === "success" || statusVal === "ok" || statusVal === "true" || statusVal === "1";
+      if (!ok) {
+        const errMsg =
+          res?.message ||
+          res?.data?.message ||
+          "Create failed. Please fix inputs and try again.";
+        message.error(errMsg);
+        toast.error(errMsg);
+        return; // <-- do not add to UI
+      }
+
       const r = res?.data ?? res ?? {};
 
       const responseIndices = Array.isArray(r.indecies)
@@ -522,6 +535,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
         customIndices: responseIndices,
       };
 
+      // Update UI ONLY on success
       setDocuments((prev) => [newItem, ...prev]);
       setSelectedDocId(newItem.id);
 
@@ -536,12 +550,16 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
       setUploadModal(false);
 
       toast.success(res?.message || "Document created");
+      // re-fetch from server for consistency
+      dispatch(handleGetAllEbooks({ subject_id: id }));
       axios.get(
         (conifgs?.LIVE_BASE_URL || "").toString() + `e-books/list?subject_id=${id}`
       );
     } catch (e) {
       console.error(e);
-      message.error("Create failed");
+      // DO NOT mutate local list on error
+      message.error("Create failed. Please try again.");
+      // keep modal open so user can correct inputs
     }
   };
 
@@ -702,6 +720,15 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
       const res = await dispatch(
         handleEditEBook({ id: editingDoc.id, body: form })
       ).unwrap();
+
+      const statusVal = String(res?.status ?? res?.data?.status ?? "").toLowerCase();
+      const ok = statusVal === "success" || statusVal === "ok" || statusVal === "true" || statusVal === "1";
+      if (!ok) {
+        const errMsg = res?.message || res?.data?.message || "Update failed.";
+        message.error(errMsg);
+        toast.error(errMsg);
+        return;
+      }
 
       const r = res?.data ?? res ?? {};
 

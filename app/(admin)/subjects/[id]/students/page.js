@@ -53,11 +53,11 @@ import {
   Plus,
   User2,
   Users,
+  Upload,
 } from "lucide-react";
 import PageLayout from "../../../../../components/layout/PageLayout";
 import PagesHeader from "../../../../../components/ui/PagesHeader";
 import BreadcrumbsShowcase from "../../../../../components/ui/BreadCrumbs";
-import Upload from "antd/es/upload/Upload";
 import Button from "../../../../../components/atoms/Button";
 import StudentsStats from "../../../../../components/Students/StudentsStats";
 import SearchAndFilters from "../../../../../components/ui/SearchAndFilters";
@@ -74,7 +74,7 @@ const { Text, Title } = Typography;
 const StudentsManagement = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
-  
+
   // State for students data from API
   const [apiStudents, setApiStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
@@ -87,7 +87,7 @@ const StudentsManagement = () => {
   const [viewMode, setViewMode] = useState("grid");
   const [addStudentModal, setAddStudentModal] = useState(false);
   const [moduleInfo, setModuleInfo] = useState(null);
-  
+
   // Pagination state
   const [pagination, setPagination] = useState({
     current: 1,
@@ -95,18 +95,14 @@ const StudentsManagement = () => {
     total: 0,
   });
 
-  const { list_module_students, list_module_student_loading } = useSelector(state => state?.modules);
-
   // Transform API student data to match frontend format
   const transformStudentData = (apiStudent, moduleInfo) => {
-    // Determine grade based on available data or use default
     const getGrade = (student) => {
       if (student.grade) return student.grade;
-      // You could add logic to determine grade based on age or other factors
       const birthDate = new Date(student.date_of_birth);
       const currentYear = new Date().getFullYear();
       const age = currentYear - birthDate.getFullYear();
-      
+
       if (age >= 17) return "12th Grade";
       if (age >= 16) return "11th Grade";
       if (age >= 15) return "10th Grade";
@@ -114,7 +110,7 @@ const StudentsManagement = () => {
     };
 
     return {
-      modules:apiStudent.modules,
+      modules: apiStudent.modules,
       id: apiStudent.student_id,
       name: apiStudent.full_name,
       email: apiStudent.email,
@@ -123,12 +119,12 @@ const StudentsManagement = () => {
       status: apiStudent.status || apiStudent.enrollment_status,
       grade: getGrade(apiStudent),
       subjects: moduleInfo ? [moduleInfo.subject_name] : [],
-      gpa: 3.5 + Math.random() * 0.5, // Random GPA between 3.5-4.0 for demo
+      gpa: 3.5 + Math.random() * 0.5,
       address: apiStudent.address || "Address not specified",
-      parentName: "Parent Name", // Would come from API in real scenario
-      parentPhone: "+20 XXX XXX XXXX", // Would come from API in real scenario
+      parentName: "Parent Name",
+      parentPhone: "+20 XXX XXX XXXX",
       dateOfBirth: apiStudent.date_of_birth,
-      studentId: `STU${apiStudent.student_id.toString().padStart(3, '0')}`,
+      studentId: `STU${apiStudent.student_id.toString().padStart(3, "0")}`,
       avatar: apiStudent.image_url,
       gender: apiStudent.gender,
       notes: apiStudent.notes,
@@ -139,37 +135,42 @@ const StudentsManagement = () => {
   // Fetch students with pagination
   const fetchStudents = (page = 1, pageSize = 10) => {
     setLoading(true);
-    dispatch(handleGetModuleStudents({ id, page, limit: pageSize }))
+    // return the promise so callers can chain .then
+    return dispatch(handleGetModuleStudents({ id, page, limit: pageSize }))
       .unwrap()
       .then((response) => {
         if (response.status === "success") {
           const { students, module, count, pagination: apiPagination } = response.data;
-          
+
           // Set module info for display
           setModuleInfo(module);
-          
-          // Transform API data to match frontend format
-          const transformedStudents = students.map(student => 
+
+          // Transform API data
+          const transformedStudents = students.map((student) =>
             transformStudentData(student, module)
           );
-          
+
           setApiStudents(transformedStudents);
           setFilteredStudents(transformedStudents);
-          
+
           // Update pagination
           setPagination({
             current: apiPagination?.page || page,
             pageSize: apiPagination?.limit || pageSize,
             total: apiPagination?.total || count,
           });
+
+          // return transformed for optional chaining
+          return { transformed: transformedStudents };
         }
+        return { transformed: [] };
       })
       .catch((error) => {
         console.error("Error fetching students:", error);
         message.error("Failed to load students. Please try again.");
-        // Set empty state to prevent showing old data
         setApiStudents([]);
         setFilteredStudents([]);
+        return { transformed: [] };
       })
       .finally(() => {
         setLoading(false);
@@ -189,7 +190,6 @@ const StudentsManagement = () => {
   useEffect(() => {
     let filtered = apiStudents;
 
-    // Filter by search text
     if (searchText) {
       filtered = filtered.filter(
         (student) =>
@@ -200,12 +200,10 @@ const StudentsManagement = () => {
       );
     }
 
-    // Filter by status
     if (selectedStatus !== "all") {
       filtered = filtered.filter((student) => student.status === selectedStatus);
     }
 
-    // Filter by grade
     if (selectedGrade !== "all") {
       filtered = filtered.filter((student) => student.grade === selectedGrade);
     }
@@ -216,19 +214,17 @@ const StudentsManagement = () => {
   const handleStatusChange = async (studentId, newStatus) => {
     setLoading(true);
     try {
-      // Here you would make the actual API call
-      // await dispatch(updateStudentStatus({ studentId, status: newStatus })).unwrap();
-      
-      // For now, update local state
-      setApiStudents(prevStudents =>
-        prevStudents.map(student =>
+      // demo local update
+      setApiStudents((prevStudents) =>
+        prevStudents.map((student) =>
           student.id === studentId ? { ...student, status: newStatus } : student
         )
       );
-      
-      message.success(`Student ${newStatus === 'blocked' ? 'blocked' : 'unblocked'} successfully!`);
+      message.success(
+        `Student ${newStatus === "blocked" ? "blocked" : "unblocked"} successfully!`
+      );
     } catch (error) {
-      message.error('Failed to update student status');
+      message.error("Failed to update student status");
     } finally {
       setLoading(false);
     }
@@ -240,13 +236,11 @@ const StudentsManagement = () => {
   };
 
   const handleExport = () => {
-    // Implement export logic
-    message.info('Export functionality will be implemented soon');
+    message.info("Export functionality will be implemented soon");
   };
 
   const handleImport = () => {
-    // Implement import logic
-    message.info('Import functionality will be implemented soon');
+    message.info("Import functionality will be implemented soon");
   };
 
   const getStatusColor = (status) => {
@@ -290,24 +284,20 @@ const StudentsManagement = () => {
     }
   };
 
-  const getGPAColor = (gpa) => {
-    if (gpa >= 3.7) return "#10b981";
-    if (gpa >= 3.0) return "#f59e0b";
-    return "#ef4444";
-  };
-
-  const getInitials = (name) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
-
   const selectedSubject = useMemo(() => {
     const subject = subjects.find((subject) => subject.code === id);
     return subject;
   }, [id]);
+
+  // NEW: refresh parent list & keep open "View Student" modal in sync
+  const handleModulesUpdated = () => {
+    fetchStudents(pagination.current, pagination.pageSize).then((res) => {
+      if (selectedStudent && res?.transformed?.length) {
+        const updated = res.transformed.find((s) => s.id === selectedStudent.id);
+        if (updated) setSelectedStudent(updated);
+      }
+    });
+  };
 
   const breadcrumbs = [
     { label: "Home", href: "/", icon: BarChart3 },
@@ -325,36 +315,19 @@ const StudentsManagement = () => {
       <PagesHeader
         title={
           <>
-            Manage <span className="text-primary">{selectedSubject?.name || 'Module'}</span>{" "}
+            Manage <span className="text-primary">{selectedSubject?.name || "Module"}</span>{" "}
             Students{" "}
           </>
         }
-        subtitle={
-          "Manage student profiles, enrollment status, and academic progress"
-        }
+        subtitle={"Manage student profiles, enrollment status, and academic progress"}
         extra={
           <div className="flex items-center space-x-4">
-            <Button 
-              type="default" 
-              icon={<Upload className="w-4 h-4" />}
-              onClick={handleImport}
-            >
+            <Button type="default" icon={<Upload className="w-4 h-4" />} onClick={handleImport}>
               Import
             </Button>
-            <Button 
-              type="secondary" 
-              icon={<Download className="w-4 h-4" />}
-              onClick={handleExport}
-            >
+            <Button type="secondary" icon={<Download className="w-4 h-4" />} onClick={handleExport}>
               Export
             </Button>
-            {/* <AntButton 
-              icon={<SyncOutlined />}
-              onClick={() => fetchStudents(pagination.current, pagination.pageSize)}
-              loading={loading}
-            >
-              Refresh
-            </AntButton> */}
             <Button
               onClick={() => setAddStudentModal(true)}
               type="primary"
@@ -372,11 +345,11 @@ const StudentsManagement = () => {
         <Card className="mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <Text strong className="text-lg">Module: </Text>
-              <Text className="text-lg">{moduleInfo.subject_name}</Text>
-              <Text className="text-gray-500 ml-2">
-                ({moduleInfo.subject_code})
+              <Text strong className="text-lg">
+                Module:{" "}
               </Text>
+              <Text className="text-lg">{moduleInfo.subject_name}</Text>
+              <Text className="text-gray-500 ml-2">({moduleInfo.subject_code})</Text>
             </div>
             <Tag color="blue" className="text-sm">
               {pagination.total} Students
@@ -384,7 +357,7 @@ const StudentsManagement = () => {
           </div>
         </Card>
       )}
-      
+
       {/* Students stats */}
       <StudentsStats students={apiStudents} loading={loading} />
 
@@ -417,9 +390,7 @@ const StudentsManagement = () => {
           <Title level={4} className="text-gray-500">
             No students found
           </Title>
-          <Text className="text-gray-400">
-            No students are enrolled in this module yet.
-          </Text>
+          <Text className="text-gray-400">No students are enrolled in this module yet.</Text>
           <div className="mt-4">
             <Button
               onClick={() => setAddStudentModal(true)}
@@ -449,7 +420,7 @@ const StudentsManagement = () => {
       {!loading && filteredStudents.length > 0 && (
         <>
           {viewMode === "table" ? (
-            <StudentsTable 
+            <StudentsTable
               students={filteredStudents}
               loading={loading}
               handleViewStudent={handleViewStudent}
@@ -457,11 +428,12 @@ const StudentsManagement = () => {
             />
           ) : (
             <StudentsCards
-            id={id}
+              id={id}
               students={filteredStudents}
               loading={loading}
               onView={handleViewStudent}
               onChangeStatus={handleStatusChange}
+              onModulesUpdated={handleModulesUpdated}  // ← hook up refresh
             />
           )}
 
@@ -475,9 +447,7 @@ const StudentsManagement = () => {
                 onChange={handlePaginationChange}
                 showSizeChanger
                 showQuickJumper
-                showTotal={(total, range) => 
-                  `${range[0]}-${range[1]} of ${total} students`
-                }
+                showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} students`}
               />
             </div>
           )}
@@ -486,11 +456,7 @@ const StudentsManagement = () => {
 
       {/* View Student Modal */}
       <Modal
-        title={
-          <div className="text-xl font-semibold text-gray-800">
-            Student Profile
-          </div>
-        }
+        title={<div className="text-xl font-semibold text-gray-800">Student Profile</div>}
         open={viewModalVisible}
         onCancel={() => setViewModalVisible(false)}
         footer={null}
@@ -505,7 +471,11 @@ const StudentsManagement = () => {
                 size={100}
                 className="bg-gradient-to-br from-cyan-500 to-purple-600 text-white font-bold text-2xl mb-4"
               >
-                {getInitials(selectedStudent.name)}
+                {selectedStudent.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()}
               </Avatar>
               <Title level={2} className="mb-2">
                 {selectedStudent.name}
@@ -515,8 +485,7 @@ const StudentsManagement = () => {
                   status={getStatusColor(selectedStudent.status)}
                   text={
                     <span className="capitalize font-medium text-lg">
-                      {getStatusIcon(selectedStudent.status)}{" "}
-                      {selectedStudent.status}
+                      {getStatusIcon(selectedStudent.status)} {selectedStudent.status}
                     </span>
                   }
                 />
@@ -530,18 +499,12 @@ const StudentsManagement = () => {
                 >
                   {selectedStudent.grade}
                 </Tag>
-                {selectedStudent.gender && (
-                  <Tag color="blue" className="capitalize">
-                    {selectedStudent.gender}
-                  </Tag>
-                )}
+                {selectedStudent.gender && <Tag color="blue" className="capitalize">{selectedStudent.gender}</Tag>}
               </div>
               <div className="flex justify-center">
                 <div className="bg-gray-100 px-4 py-2 rounded-lg">
                   <Text strong>Student ID: </Text>
-                  <Text className="text-blue-600">
-                    {selectedStudent.id}
-                  </Text>
+                  <Text className="text-blue-600">{selectedStudent.id}</Text>
                 </div>
               </div>
             </div>
@@ -574,9 +537,7 @@ const StudentsManagement = () => {
                     <CalendarOutlined className="mr-2 text-purple-600" />
                     Date of Birth
                   </Text>
-                  <Text>
-                    {new Date(selectedStudent.dateOfBirth).toLocaleDateString()}
-                  </Text>
+                  <Text>{new Date(selectedStudent.dateOfBirth).toLocaleDateString()}</Text>
                 </div>
               </Col>
               <Col span={12}>
@@ -594,9 +555,7 @@ const StudentsManagement = () => {
                     <CalendarOutlined className="mr-2 text-cyan-600" />
                     Enrolled At
                   </Text>
-                  <Text>
-                    {new Date(selectedStudent.enrolledAt).toLocaleDateString()}
-                  </Text>
+                  <Text>{new Date(selectedStudent.enrolledAt).toLocaleDateString()}</Text>
                 </div>
               </Col>
               <Col span={12}>
@@ -605,12 +564,10 @@ const StudentsManagement = () => {
                     <User2 className="mr-2 text-cyan-600" />
                     Grade
                   </Text>
-                  <Text>
-                    {selectedStudent?.grade}
-                  </Text>
+                  <Text>{selectedStudent?.grade}</Text>
                 </div>
               </Col>
-              
+
               <Col span={12}>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <Text strong className="text-gray-700 flex items-center mb-2">
@@ -665,8 +622,8 @@ const StudentsManagement = () => {
       </Modal>
 
       {/* Add Student Modal */}
-      <AddStudentModal 
-      id={id}
+      <AddStudentModal
+        id={id}
         open={addStudentModal}
         onCancel={() => setAddStudentModal(false)}
         onSuccess={() => {
