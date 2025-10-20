@@ -6,3 +6,4 @@ export const conifgs = {
     LIVE_BASE_URL:"https://medgap-backend.vercel.app/api/admin/",
     localStorageUserPermissionsData :"laserjet_user_permissions_data"
 }
+ 
