@@ -5,5 +5,5 @@ export const conifgs = {
     LOCAL_BASE_URL: "http://192.168.1.76:3210/api/",
     LIVE_BASE_URL:"https://medgap-backend.vercel.app/api/admin/",
     localStorageUserPermissionsData :"laserjet_user_permissions_data"
-}
+} 
  
