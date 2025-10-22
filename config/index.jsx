@@ -3,7 +3,7 @@ export const conifgs = {
     localStorageTokenName:"medgap_admin_data",
     // LOCAL_BASE_URL: "http://localhost:3209/api/",
     LOCAL_BASE_URL: "http://192.168.1.76:3210/api/",
-    LIVE_BASE_URL:"https://medgap-backend.vercel.app/api/admin/",
+    LIVE_BASE_URL:"https://api.medgap.net/api/admin/",
     localStorageUserPermissionsData :"laserjet_user_permissions_data"
 } 
  
