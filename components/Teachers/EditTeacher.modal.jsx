@@ -28,7 +28,7 @@ import {
   handleEditTeacher,
   handleGetAllTeachers,
 } from "../../features/teachersSlice";
-import { handleGetListModulesAvailable } from "../../features/modulesSlice";
+import { handleGetListModulesAvailable, handleGetModuleTeachers } from "../../features/modulesSlice";
 import { toast } from "react-toastify";
 
 const { TextArea } = Input;
@@ -49,7 +49,8 @@ const initials = (name = "") =>
     .map((p) => p[0]?.toUpperCase() || "")
     .join("");
 
-function EditTeacherModal({ open, onCancel, teacher, subjectOptions = [] }) {
+function EditTeacherModal({ open, onCancel, teacher, id, subjectOptions = [] }) {
+
   const [form] = Form.useForm();
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -57,6 +58,10 @@ function EditTeacherModal({ open, onCancel, teacher, subjectOptions = [] }) {
   const dispatch = useDispatch();
   const { edit_teacher_loading } = useSelector((state) => state.teachers);
   const { list_module_available } = useSelector((state) => state.modules);
+
+  useEffect(() =>{
+    console.log(id);
+  } , [id])
 
   useEffect(() => {
     dispatch(handleGetListModulesAvailable());
@@ -277,7 +282,11 @@ function EditTeacherModal({ open, onCancel, teacher, subjectOptions = [] }) {
         setShowPasswordFields(false);
         // Reset to original avatar
         setAvatarPreview(getAvatarUrl(teacher));
+        if(id){
+          dispatch(handleGetModuleTeachers({id}))
+        }
         dispatch(handleGetAllTeachers()); // Refresh the teachers list
+        window.location.reload();
         onCancel?.();
       } else {
         throw new Error(result.message || "Failed to update teacher");

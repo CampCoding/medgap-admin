@@ -104,7 +104,8 @@ const TeachersManagementClient = () => {
       status: "approved",
     },
   ]);
-
+  
+  const [showFilters, setShowFilters] = useState(false);
   const dispatch = useDispatch();
   const { all_teachers_loading, teachers_list } = useSelector(
     (state) => state?.teachers
@@ -145,6 +146,7 @@ const TeachersManagementClient = () => {
   useEffect(() => {
     console.log(filters);
   }, [filters]);
+
   // Transform API data to match your frontend structure
   const transformTeacherData = (apiTeachers) => {
     return (
@@ -183,7 +185,6 @@ const TeachersManagementClient = () => {
             dispatch(handleGetAllTeachers());
           }
         });
-      // message.success(`Teacher ${newStatus} successfully!`);
     } catch (error) {
       message.error(error || `Failed to update teacher status: ${error}`);
     } finally {
@@ -543,24 +544,124 @@ const TeachersManagementClient = () => {
       />
       <TeacherStats />
       <div className="mx-auto">
-        {/* Filters Section */}
+        {/* Search and Filters */}
         <SearchAndFilters
           mode={viewMode}
           setMode={setViewMode}
           searchTerm={searchText}
           setSearchTerm={setSearchText}
           searchPlaceholder="Search teachers, email, phone, or subjects..."
-          filters={filterConfig}
-          onFiltersChange={setFilters}
-          sortOptions={sortOptions}
-          onSortChange={setSortBy}
-          bulkActions={bulkActions}
-          selectedItems={selectedTeachers}
-          onBulkAction={handleBulkAction}
+          showFilters={showFilters}
+          setShowFilters={setShowFilters}
           onRefresh={handleRefresh}
-          onExport={handleExport}
-          onImport={handleImport}
         />
+
+        {/* Filters Section - Conditionally Rendered */}
+        {showFilters && (
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Filter Teachers</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Status Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <select
+                  value={filters.status || ""}
+                  onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+
+              {/* Experience Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Experience
+                </label>
+                <select
+                  value={filters.experience || ""}
+                  onChange={(e) => setFilters(prev => ({...prev, experience: e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">All Experience</option>
+                  <option value="0-2">0-2 years</option>
+                  <option value="3-5">3-5 years</option>
+                  <option value="6-10">6-10 years</option>
+                  <option value="10+">10+ years</option>
+                </select>
+              </div>
+
+              {/* Qualification Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Qualification
+                </label>
+                <input
+                  type="text"
+                  value={filters.qualification || ""}
+                  onChange={(e) => setFilters(prev => ({...prev, qualification: e.target.value}))}
+                  placeholder="Search qualification"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              {/* Join Date Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Join Date
+                </label>
+                <input
+                  type="date"
+                  value={filters.joinDate || ""}
+                  onChange={(e) => setFilters(prev => ({...prev, joinDate: e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              {/* Sort Options */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sort By
+                </label>
+                <select
+                  value={sortBy || ""}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  {sortOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Clear Filters Button */}
+            <div className="flex justify-end mt-4">
+              <Button
+                type="default"
+                onClick={() => {
+                  setFilters({
+                    status: "",
+                    experience: "",
+                    qualification: "",
+                    joinDate: "",
+                    subjects: [],
+                  });
+                  setSortBy("");
+                }}
+              >
+                Clear All Filters
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         {viewMode === "table" ? (

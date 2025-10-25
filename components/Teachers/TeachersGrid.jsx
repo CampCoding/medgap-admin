@@ -65,9 +65,10 @@ function initials(name = "") {
 
 // Transform API data to match frontend structure
 const transformTeacherData = (apiTeachers) => {
+  console.log(apiTeachers);
   return (apiTeachers || []).map((teacher) => ({
-    id: teacher.teacher_id,
-    name: teacher.full_name,
+    id: teacher?.teacher_id || teacher?.id,
+    name: teacher?.name|| teacher?.full_name,
     email: teacher.email,
     phone: teacher.phone,
     subjects:
@@ -75,10 +76,10 @@ const transformTeacherData = (apiTeachers) => {
       (teacher.active_modules || []).map((m) => m.subject_name) ||
       [],
     status: teacher.status,
-    joinDate: teacher.join_date,
-    experience: teacher.experience_years ?? 0, // keep numeric for sorting
+    joinDate: teacher.joinDate || teacher?.join_date,
+    experience: teacher.experience ?? teacher?.experience_years ?? 0, // keep numeric for sorting
     qualification: teacher.qualification,
-    avatar: teacher.full_image_url,
+    avatar: teacher?.avatar || teacher?.full_image_url,
     notes: teacher.notes,
     reviewer: teacher.reviewer || null,
     // Keep original API data for reference
@@ -87,6 +88,7 @@ const transformTeacherData = (apiTeachers) => {
 };
 
 function TeacherCards({
+  id,
   data = [],
   loading = false,
   pageSizeOptions = [6, 9, 12],
@@ -118,6 +120,7 @@ function TeacherCards({
   // Transform API data to match frontend structure
   const transformedData = useMemo(() => transformTeacherData(data), [data]);
   const router = useRouter();
+
 
   // normalize once
   const normalizedData = useMemo(
@@ -154,9 +157,12 @@ function TeacherCards({
   // pagination slice
   const pageData = useMemo(() => {
     const start = (page - 1) * ps;
-    return filtered.slice(start, start + ps);
+    return filtered?.slice(start, start + ps);
   }, [filtered, page, ps]);
-
+  
+    useEffect(() => {
+    console.log(data ,pageData)
+  } , [data, pageData])
   // keep page valid when filter/page size changes
   useEffect(() => {
     const maxPage = Math.max(1, Math.ceil(total / ps));
@@ -187,13 +193,15 @@ function TeacherCards({
           label: s.label,
         })),
       },
-      {
+      id && {
         key: "modules",
         icon: <BookPlus className="w-4 h-4" />,
         label: "Modules",
       },
       ...(entityType === "teacher"
-        ? [{ type: "divider" }, { key: "assign", icon: <UserCheck className="w-4 h-4" />, label: "Assign Reviewer" }]
+        ? [{ type: "divider" }, 
+          // { key: "assign", icon: <UserCheck className="w-4 h-4" />, label: "Assign Reviewer" }
+        ]
         : [{ type: "divider" }]),
       {
         key: "delete",
@@ -209,7 +217,8 @@ function TeacherCards({
         else setEditTeacherOpen(true);
         return;
       }
-      if (key.startsWith("status:")) {
+      if (key.startsWith("status")) {
+        console.log(row);
         const newStatus = key.split(":")[1];
         onChangeStatus?.(row, newStatus);
         return;
@@ -364,6 +373,7 @@ function TeacherCards({
               {pageData.map((t) => {
                 const meta = STATUS_META[t._status] || STATUS_META.pending;
                 const avatarSrc = getAvatarSrc(t);
+                console.log(t);
                 return (
                   <Card
                     key={t.id}
@@ -375,7 +385,7 @@ function TeacherCards({
                       {avatarSrc ? (
                         <img
                           src={avatarSrc}
-                          alt={t.name}
+                          alt={t?.name}
                           className="w-12 h-12 rounded-full object-cover"
                         />
                       ) : (
@@ -522,6 +532,7 @@ function TeacherCards({
       {/* Edit Modals (auto-pick based on entityType) */}
       {entityType === "teacher" ? (
         <EditTeacherModal
+        id={id}
           open={editTeacherOpen}
           onCancel={() => setEditTeacherOpen(false)}
           teacher={selectedRow}

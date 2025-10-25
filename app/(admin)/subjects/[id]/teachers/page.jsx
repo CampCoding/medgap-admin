@@ -37,6 +37,9 @@ import TeacherStats from "../../../../../components/Teachers/TeachersStats";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "next/navigation";
 import { handleGetModuleTeachers } from "../../../../../features/modulesSlice";
+import DeleteTeacherModal from "../../../../../components/Teachers/DeleteTeacherModal";
+import { handleChangeReviewerStatus } from "../../../../../features/reviewersSlice";
+import { toast } from "react-toastify";
 
 const { Text, Title } = Typography;
 
@@ -47,12 +50,13 @@ const SubjectTeachers = () => {
   const [apiTeachers, setApiTeachers] = useState([]);
   const [filteredTeachers, setFilteredTeachers] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [searchText, setSearchText] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState("grid");
   const [addNewModal, setAddNewModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -60,6 +64,11 @@ const SubjectTeachers = () => {
     pageSize: 10,
     total: 0,
   });
+  const [openDeleteModal, setOpenDeleteModal] = useState(false);
+
+  function handleDelete(teacher) {
+    setOpenDeleteModal(teacher);
+  }
 
   const dispatch = useDispatch();
 
@@ -79,6 +88,7 @@ const SubjectTeachers = () => {
       notes: apiTeacher.notes,
       assignment_status: apiTeacher.assignment_status,
       moduleInfo: moduleInfo,
+      _original: apiTeacher, // Keep original data for API calls
     };
   };
 
@@ -116,6 +126,38 @@ const SubjectTeachers = () => {
       });
   };
 
+  // Handle status change for teachers
+  const handleStatusChange = async (teacherId, newStatus) => {
+    console.log("Changing status:", teacherId, newStatus);
+    setLoading(true);
+    try {
+      // Use the reviewer status change API for teachers
+      await dispatch(
+        handleChangeReviewerStatus({
+          id: teacherId?.id,
+          body: {
+            status: newStatus,
+          },
+        })
+      )
+        .unwrap()
+        .then((res) => {
+          if (res?.status === "success") {
+            toast.success(res?.message || "Status updated successfully");
+            // Refresh the teachers list
+            fetchTeachers(pagination.current, pagination.pageSize);
+          } else {
+            throw new Error(res?.message || "Failed to update status");
+          }
+        });
+    } catch (error) {
+      console.error("Status change error:", error);
+      message.error(error?.message || `Failed to update teacher status`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchTeachers(1, 10);
   }, [id]);
@@ -123,26 +165,6 @@ const SubjectTeachers = () => {
   // Handle pagination change
   const handlePaginationChange = (page, pageSize) => {
     fetchTeachers(page, pageSize);
-  };
-
-  const handleStatusChange = (teacherId, newStatus) => {
-    setLoading(true);
-    // Here you would typically make an API call to update the status
-    // For now, we'll update the local state
-    setTimeout(() => {
-      setApiTeachers(prevTeachers =>
-        prevTeachers.map(teacher =>
-          teacher.id === teacherId ? { ...teacher, status: newStatus } : teacher
-        )
-      );
-      setFilteredTeachers(prevTeachers =>
-        prevTeachers.map(teacher =>
-          teacher.id === teacherId ? { ...teacher, status: newStatus } : teacher
-        )
-      );
-      message.success(`Teacher ${newStatus} successfully!`);
-      setLoading(false);
-    }, 500);
   };
 
   const handleViewTeacher = (teacher) => {
@@ -189,11 +211,11 @@ const SubjectTeachers = () => {
     let filtered = apiTeachers;
 
     // Filter by search text
-    if (searchText) {
+    if (searchTerm) {
       filtered = filtered.filter(teacher =>
-        teacher.name.toLowerCase().includes(searchText.toLowerCase()) ||
-        teacher.email.toLowerCase().includes(searchText.toLowerCase()) ||
-        teacher.qualification.toLowerCase().includes(searchText.toLowerCase())
+        teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        teacher.qualification.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -203,7 +225,7 @@ const SubjectTeachers = () => {
     }
 
     setFilteredTeachers(filtered);
-  }, [searchText, selectedStatus, apiTeachers]);
+  }, [searchTerm, selectedStatus, apiTeachers]);
 
   const breadcrumbs = [
     { label: "Home", href: "/", icon: BarChart3 },
@@ -219,9 +241,6 @@ const SubjectTeachers = () => {
         subtitle={`Review and manage teachers for ${apiTeachers[0]?.moduleInfo?.subject_name || 'this module'}`}
         extra={
           <div className="flex items-center space-x-4">
-            <Button type="default" icon={<Upload className="w-4 h-4" />}>
-              Import
-            </Button>
             <Button type="secondary" icon={<Download className="w-4 h-4" />}>
               Export
             </Button>
@@ -245,11 +264,47 @@ const SubjectTeachers = () => {
         <SearchAndFilters 
           mode={viewMode} 
           setMode={setViewMode}
-          searchText={searchText}
-          setSearchText={setSearchText}
-          selectedStatus={selectedStatus}
-          setSelectedStatus={setSelectedStatus}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          showFilters={showFilters}
+          setShowFilters={setShowFilters}
+          searchPlacehodler="Search teachers by name, email, or qualification..."
         />
+
+        {/* Filter Section - Conditionally rendered */}
+        {showFilters && (
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Filter Teachers</h3>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              
+              {/* Add more filter options here as needed */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-2">Experience</label>
+                <select
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Experience</option>
+                  <option value="0-2">0-2 years</option>
+                  <option value="3-5">3-5 years</option>
+                  <option value="5+">5+ years</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {loading && (
@@ -262,20 +317,27 @@ const SubjectTeachers = () => {
         {!loading && (
           <>
             {viewMode === "table" ? (
-              <>
-                <TeachersTable
-                  data={filteredTeachers}
-                  loading={loading}
-                  onView={handleViewTeacher}
-                  onStatusChange={handleStatusChange}
-                />
-              </>
+              <TeachersTable
+                data={filteredTeachers}
+                loading={loading}
+                onView={handleViewTeacher}
+                onStatusChange={handleStatusChange}
+              />
             ) : (
               <TeacherCards
+                onDelete={(t) => handleDelete(t)}
                 data={filteredTeachers}
+                onChangeStatus={(teacher, status) =>
+                  handleStatusChange(teacher, status)
+                }
                 onView={handleViewTeacher}
-                onApprove={(teacher) => handleStatusChange(teacher.id, "approved")}
-                onReject={(teacher) => handleStatusChange(teacher.id, "rejected")}
+                onApprove={(teacher) =>
+                  handleStatusChange(teacher, "approved")
+                }
+                onReject={(teacher) =>
+                  handleStatusChange(teacher, "rejected")
+                }
+                id={id}
               />
             )}
 
@@ -438,7 +500,7 @@ const SubjectTeachers = () => {
                   className="bg-green-600 hover:bg-green-700 border-green-600 px-8"
                   icon={<CheckCircleOutlined />}
                   onClick={() => {
-                    handleStatusChange(selectedTeacher.id, "approved");
+                    handleStatusChange(selectedTeacher._original.teacher_id, "approved");
                     setViewModalVisible(false);
                   }}
                 >
@@ -452,7 +514,7 @@ const SubjectTeachers = () => {
                   className="px-8"
                   icon={<CloseCircleOutlined />}
                   onClick={() => {
-                    handleStatusChange(selectedTeacher.id, "rejected");
+                    handleStatusChange(selectedTeacher._original.teacher_id, "rejected");
                     setViewModalVisible(false);
                   }}
                 >
@@ -469,6 +531,13 @@ const SubjectTeachers = () => {
         onCancel={() => setAddNewModal(false)}
         subjectOptions={subjects}
         onSubmit={(payload) => console.log(payload)}
+      />
+
+      <DeleteTeacherModal 
+        data={openDeleteModal}
+        open={openDeleteModal}
+        setOpen={setOpenDeleteModal}
+        id={id}
       />
     </PageLayout>
   );

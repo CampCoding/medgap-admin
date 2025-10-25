@@ -5,24 +5,31 @@
  import { useDispatch, useSelector } from "react-redux";
  import { toast } from "react-toastify";
 import { handleDeleteTeacher, handleGetAllTeachers } from "../../features/teachersSlice";
+import { handleGetModuleTeachers } from "../../features/modulesSlice";
  
- const DeleteTeacherModal = ({ open, setOpen, data }) => {
+ const DeleteTeacherModal = ({id, open, setOpen, data }) => {
    const dispatch =  useDispatch();
    const {delete_teacher_loading} = useSelector(state => state?.topics);
  
   function handleDelete() {
+
    dispatch(handleDeleteTeacher({id : data?.id}))
        .unwrap()
        .then(res =>  {
          if(res?.status == "success") {
            toast.success(res?.message);
-           dispatch(handleGetAllTeachers())
+           if(id) {
+             dispatch(handleGetModuleTeachers({ id}))
+           }else{
+             dispatch(handleGetAllTeachers())
+           }
            setOpen(false);
          }else {
            toast.error(res)
          }
        }).catch(e => console.log(e))
        .finally(() => setOpen(false))
+      
   }
    
    return (

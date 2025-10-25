@@ -114,7 +114,7 @@ function AddReviewerModal({ open, onCancel, onSubmit }) {
 
       if (avatarFile) formData.append("image", avatarFile);
 
-      const result = await dispatch(handleCreateReviewer(formData)).unwrap();
+      const result = await dispatch(handleCreateReviewer(formData , "reviewer")).unwrap();
       console.log(result);
       if (result?.status === "success") {
         toast.success(result?.message || "Reviewer created successfully!");

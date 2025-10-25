@@ -33,7 +33,7 @@ const UnitCard = ({
   const toTopics = () => to("topics");
   const toQuestions = () => to("questions");
   const toFlashcards = () => to("flashcards");
-  const toDigital = () => to("digital-library");
+  const toDigital = () => to(`digital-library`);
 
   const topicsArr = unit?.topics ?? [];
   const digitalCount = topicsArr.reduce((sum, t) => sum + (t.digital_library || 0), 0);
@@ -43,16 +43,16 @@ const UnitCard = ({
   const menu = {
     items: [
       { key: "topics",     label: "Topics",     icon: <BookOpen size={14} /> },
-      { key: "questions",  label: "Questions",  icon: <HelpCircle size={14} /> },
-      { key: "flashcards", label: "Flashcards", icon: <FileText size={14} /> },
+      // { key: "questions",  label: "Questions",  icon: <HelpCircle size={14} /> },
+      { key: "digital_library", label: "Digital Library", icon: <FileText size={14} /> },
       { type: "divider" },
       { key: "edit",       label: "Edit",       icon: <Edit3 size={14} /> },
       { key: "delete",     label: "Delete",     icon: <Trash2 size={14} />, danger: true },
     ],
     onClick: ({ key }) => {
       if (key === "topics")     return router.push(toTopics());
-      if (key === "questions")  return router.push(toQuestions());
-      if (key === "flashcards") return router.push(toFlashcards());
+      // if (key === "questions")  return router.push(toQuestions());
+      if (key === "digital_library") return router.push(toDigital());
       if (key === "edit") {
         if (onEditClick) return onEditClick(unit);
         return router.push(to("edit"));
@@ -67,8 +67,8 @@ const UnitCard = ({
       style={{ backgroundColor: "white" }}
       role="link"
       tabIndex={0}
-      onClick={() => router.push(toTopics())}
-      onKeyDown={(e) => e.key === "Enter" && router.push(toTopics())}
+      // onClick={() => router.push(toTopics())}
+      // onKeyDown={(e) => e.key === "Enter" && router.push(toTopics())}
     >
       {/* Background */}
       <div

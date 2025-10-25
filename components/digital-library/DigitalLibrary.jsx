@@ -26,6 +26,7 @@ import {
   CheckCircle,
   AlertTriangle,
   RotateCcw,
+  FileDown, // Added for summary download
 } from "lucide-react";
 import {
   Input,
@@ -116,6 +117,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     title: "",
     page: "",
     order: 0,
+    type: "custom", // Added type field with default value
   });
   const [showCustomIndexForm, setShowCustomIndexForm] = useState(false);
 
@@ -168,14 +170,14 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
         }
       })();
 
-      // Handle indices from response - they come as 'indecies' array
+      // Handle indices from response - now supporting 'summary' type
       const customIndices = Array.isArray(r.indecies)
         ? r.indecies.map((idx) => ({
             id: idx.index_id,
             title: idx.title,
             page: Number(idx.page),
             order: Number(idx.order) || 0,
-            type: "custom",
+            type: idx.type || "custom", // Added type support
           }))
         : r.custom_indices ?? r.customIndices ?? [];
 
@@ -404,6 +406,29 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     }
   };
 
+  /* -------------- Download Book as PDF --------------- */
+  const downloadBookAsPDF = () => {
+    if (!currentDoc?.pdfUrl) {
+      message.error("No PDF available for download");
+      return;
+    }
+
+    try {
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement('a');
+      link.href = currentDoc.pdfUrl;
+      link.download = currentDoc.fileName || `${currentDoc.title}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      message.success("Download started");
+    } catch (error) {
+      console.error("Download failed:", error);
+      message.error("Download failed");
+    }
+  };
+
   /* -------------- Create: Upload handlers --------------- */
   const handleImageUpload = {
     beforeUpload: (file) => {
@@ -487,6 +512,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
         form.append(`index[${index}][title]`, item.title);
         form.append(`index[${index}][page]`, String(item.page));
         form.append(`index[${index}][order]`, String(item.order || 0));
+        form.append(`index[${index}][type]`, item.type || "custom"); // Added type
       });
     }
 
@@ -514,7 +540,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
             title: idx.title,
             page: Number(idx.page),
             order: Number(idx.order) || 0,
-            type: "custom",
+            type: idx.type || "custom", // Added type
           }))
         : customIndex;
 
@@ -546,7 +572,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
       setPreviewOutlines([]);
       setCustomIndex([]);
       setShowCustomIndexForm(false);
-      setNewIndexEntry({ title: "", page: "", order: 0 });
+      setNewIndexEntry({ title: "", page: "", order: 0, type: "custom" });
       setUploadModal(false);
 
       toast.success(res?.message || "Document created");
@@ -640,6 +666,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     const title = (newIndexEntry.title || "").trim();
     const pageNum = parseInt(String(newIndexEntry.page), 10);
     const orderNum = parseInt(String(newIndexEntry.order), 10) || 0;
+    const type = newIndexEntry.type || "custom";
 
     if (!title) {
       message.error("Index title is required");
@@ -653,9 +680,9 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     }
     setCustomIndex((prev) => [
       ...prev,
-      { id: null, title, page: pageNum, order: orderNum, type: "custom" },
+      { id: null, title, page: pageNum, order: orderNum, type },
     ]);
-    setNewIndexEntry({ title: "", page: "", order: 0 });
+    setNewIndexEntry({ title: "", page: "", order: 0, type: "custom" });
     message.success("Index entry added");
   };
 
@@ -663,6 +690,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     const title = (newIndexEntry.title || "").trim();
     const pageNum = parseInt(String(newIndexEntry.page), 10);
     const orderNum = parseInt(String(newIndexEntry.order), 10) || 0;
+    const type = newIndexEntry.type || "custom";
 
     if (!title) {
       message.error("Index title is required");
@@ -683,13 +711,13 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
         title,
         page: pageNum,
         order: orderNum,
-        type: "custom",
+        type,
         _isNew: true,
         _deleted: false,
         _dirty: true,
       },
     ]);
-    setNewIndexEntry({ title: "", page: "", order: 0 });
+    setNewIndexEntry({ title: "", page: "", order: 0, type: "custom" });
     message.success("Index entry added");
   };
 
@@ -712,6 +740,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
         form.append(`index[${i}][title]`, item.title);
         form.append(`index[${i}][page]`, String(item.page));
         form.append(`index[${i}][order]`, String(item.order || 0));
+        form.append(`index[${i}][type]`, item.type || "custom"); // Added type
         if (item._deleted) form.append(`index[${i}][_delete]`, "1");
       });
     }
@@ -738,7 +767,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
             title: idx.title,
             page: Number(idx.page),
             order: Number(idx.order) || 0,
-            type: "custom",
+            type: idx.type || "custom", // Added type
           }))
         : customIndex
             .filter((x) => !x._deleted)
@@ -747,7 +776,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
               title: x.title,
               page: x.page,
               order: x.order || 0,
-              type: "custom",
+              type: x.type || "custom",
             }));
 
       const updated = {
@@ -840,6 +869,13 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
           <div className="flex items-center gap-3">
             {currentDoc && (
               <>
+                {/* Download Book Button */}
+                <Button onClick={downloadBookAsPDF}>
+                  <span className="inline-flex items-center gap-2">
+                    <FileDown className="w-4 h-4" />
+                    Download Book
+                  </span>
+                </Button>
                 <Button onClick={openEdit}>
                   <span className="inline-flex items-center gap-2">
                     <Edit className="w-4 h-4" />
@@ -1195,10 +1231,19 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                               currentPage === item.page
                                 ? "bg-blue-100 text-blue-800"
                                 : "hover:bg-gray-50"
+                            } ${
+                              item.type === "summary" ? "border-l-4 border-l-green-500" : ""
                             }`}
                           >
                             <FileText className="w-3 h-3 text-green-500 mt-1 flex-shrink-0" />
-                            <span className="text-sm flex-1">{item.title}</span>
+                            <span className="text-sm flex-1">
+                              {item.title}
+                              {item.type === "summary" && (
+                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-1 rounded">
+                                  Summary
+                                </span>
+                              )}
+                            </span>
                             <div className="flex flex-col items-end">
                               <span className="text-xs text-gray-400 bg-gray-100 px-1 rounded">
                                 Page {item.page}
@@ -1314,7 +1359,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
           setPreviewOutlines([]);
           setCustomIndex([]);
           setShowCustomIndexForm(false);
-          setNewIndexEntry({ title: "", page: "", order: 0 });
+          setNewIndexEntry({ title: "", page: "", order: 0, type: "custom" });
         }}
         footer={null}
         width={900}
@@ -1409,6 +1454,8 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                 </AntUpload.Dragger>
               </Form.Item>
 
+    
+
               {/* Custom Index Management */}
               <div className="mt-4 border-t pt-4">
                 <div className="flex items-center justify-between mb-3">
@@ -1463,6 +1510,17 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           className="w-20"
                           size="small"
                         />
+                        <Select
+                          value={newIndexEntry.type}
+                          onChange={(value) =>
+                            setNewIndexEntry((s) => ({ ...s, type: value }))
+                          }
+                          className="w-24"
+                          size="small"
+                        >
+                          <Option value="custom">Custom</Option>
+                          <Option value="summary">Summary</Option>
+                        </Select>
                         {/* html button to avoid form submit */}
                         <button
                           type="button"
@@ -1487,10 +1545,19 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                       {customIndex.map((item, index) => (
                         <div
                           key={item.id || index}
-                          className="flex items-center justify-between p-2 border-b last:border-b-0 hover:bg-gray-50"
+                          className={`flex items-center justify-between p-2 border-b last:border-b-0 hover:bg-gray-50 ${
+                            item.type === "summary" ? "border-l-4 border-l-green-500" : ""
+                          }`}
                         >
                           <div className="flex-1">
-                            <div className="text-sm text-gray-800">{item.title}</div>
+                            <div className="text-sm text-gray-800">
+                              {item.title}
+                              {item.type === "summary" && (
+                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-1 rounded">
+                                  Summary
+                                </span>
+                              )}
+                            </div>
                             <div className="text-xs text-gray-500">
                               Page {item.page} • Order: {item.order || 0}
                             </div>
@@ -1552,7 +1619,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                 setPreviewOutlines([]);
                 setCustomIndex([]);
                 setShowCustomIndexForm(false);
-                setNewIndexEntry({ title: "", page: "", order: 0 });
+                setNewIndexEntry({ title: "", page: "", order: 0, type: "custom" });
               }}
               className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50"
             >
@@ -1698,6 +1765,17 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           className="w-20"
                           size="small"
                         />
+                        <Select
+                          value={newIndexEntry.type}
+                          onChange={(value) =>
+                            setNewIndexEntry((s) => ({ ...s, type: value }))
+                          }
+                          className="w-24"
+                          size="small"
+                        >
+                          <Option value="custom">Custom</Option>
+                          <Option value="summary">Summary</Option>
+                        </Select>
                         {/* html button to avoid form submit */}
                         <button
                           type="button"
@@ -1722,9 +1800,9 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                       key={item.id ?? `row-${i}`}
                       className={`p-2 border rounded-lg ${
                         item._deleted ? "bg-red-50 border-red-200" : "bg-gray-50"
-                      }`}
+                      } ${item.type === "summary" ? "border-l-4 border-l-green-500" : ""}`}
                     >
-                      <div className="grid grid-cols-[1fr_90px_90px_110px] gap-2 items-center">
+                      <div className="grid grid-cols-[1fr_90px_90px_90px_110px] gap-2 items-center">
                         <Input
                           value={item.title}
                           disabled={item._deleted}
@@ -1762,6 +1840,15 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           placeholder="Order"
                           className={item._deleted ? "line-through" : ""}
                         />
+                        <Select
+                          value={item.type || "custom"}
+                          disabled={item._deleted}
+                          onChange={(value) => updateIndexField(i, "type", value)}
+                          size="small"
+                        >
+                          <Option value="custom">Custom</Option>
+                          <Option value="summary">Summary</Option>
+                        </Select>
                         <div className="flex items-center justify-end gap-2">
                           {!item._deleted ? (
                             <>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Plus,
   Edit3,
@@ -38,6 +38,9 @@ const SearchAndFilters = ({
   showFilters,
   setShowFilters,
 }) => {
+  useEffect(() => {
+    console.log(showFilters);
+  }, [showFilters]);
   return (
     <Card className="p-6 mb-8">
       <div className="flex items-center justify-between">
@@ -52,12 +55,12 @@ const SearchAndFilters = ({
           </div>
           {!hideFilters && (
             <Button
-            type={showFilters ? "primary" : "default"}
-            icon={<Filter className="w-4 h-4" />}
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            {showFilters ? "Hide Filters" : "Show Filters"}
-          </Button>
+              type={showFilters ? "primary" : "default"}
+              icon={<Filter className="w-4 h-4" />}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              {showFilters ? "Hide Filters" : "Show Filters"}
+            </Button>
           )}
         </div>
         {noMode ? null : (

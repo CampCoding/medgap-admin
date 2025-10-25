@@ -116,6 +116,10 @@ const ReviewersManagementClient = () => {
   });
   const [sortBy, setSortBy] = useState("");
   const [selectedTeachers, setSelectedTeachers] = useState([]);
+  
+  useEffect(() => {
+    console.log(selectedTeacher);
+   } , [selectedTeacher])
 
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -176,11 +180,12 @@ const ReviewersManagementClient = () => {
   };
 
   const handleViewTeacher = (teacher) => {
+    console.log(teacher);
     setSelectedTeacher(
       // normalize for the modal preview (expects transformed)
       {
         id: teacher.teacher_id,
-        name: teacher.full_name,
+        name: teacher?.name || teacher?.full_name,
         email: teacher.email,
         phone: teacher.phone,
         subjects: teacher.subjects || [],
@@ -529,11 +534,7 @@ const ReviewersManagementClient = () => {
   };
 
   const getInitials = (name) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
+    return name?.split(" ")?.map((n) => n[0]).join("").toUpperCase();
   };
 
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
@@ -757,7 +758,7 @@ const ReviewersManagementClient = () => {
                     Modules
                   </Text>
                   <div className="flex gap-2 items-center">
-                    {selectedTeacher?._original?.active_modules?.map((item) => (
+                    {selectedTeacher?._original?._original?.active_modules?.map((item) => (
                       <Tag key={item?.module_id}>{item?.subject_name}</Tag>
                     ))}
                   </div>
@@ -786,7 +787,7 @@ const ReviewersManagementClient = () => {
                     Role
                   </Text>
                   <Text className="text-lg">
-                    {selectedTeacher._original?.role}
+                    Reviewer
                   </Text>
                 </div>
               </Col>
@@ -818,7 +819,7 @@ const ReviewersManagementClient = () => {
                     Join Date
                   </Text>
                   <Text>
-                    {new Date(selectedTeacher.joinDate).toLocaleDateString()}
+                    {new Date(selectedTeacher.join_date).toLocaleDateString()}
                   </Text>
                 </div>
               </Col>

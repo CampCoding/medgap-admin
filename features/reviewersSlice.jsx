@@ -49,9 +49,9 @@ export const handleGetReviewerDetails = createAsyncThunk(
 
 export const handleCreateReviewer = createAsyncThunk(
   "reviewersSlice/handleCreateReviewer",
-  async (body) => {
+  async (body , role) => {
     const response = await fetchData({
-      url: userApi.routes?.teachers,
+      url: role ? `${userApi.routes?.teachers}?role=${role}` : userApi.routes?.teachers,
       body,
       isFile: true,
       method: "POST",
