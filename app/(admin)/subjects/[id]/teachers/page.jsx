@@ -146,6 +146,7 @@ const SubjectTeachers = () => {
             toast.success(res?.message || "Status updated successfully");
             // Refresh the teachers list
             fetchTeachers(pagination.current, pagination.pageSize);
+            window.location.reload()
           } else {
             throw new Error(res?.message || "Failed to update status");
           }
@@ -492,7 +493,7 @@ const SubjectTeachers = () => {
             </Row>
 
             {/* Action Buttons */}
-            <div className="text-center space-x-4">
+            {/* <div className="text-center space-x-4">
               {selectedTeacher.status !== "approved" && (
                 <Button
                   type="primary"
@@ -521,7 +522,7 @@ const SubjectTeachers = () => {
                   Reject Teacher
                 </Button>
               )}
-            </div>
+            </div> */}
           </div>
         )}
       </Modal>

@@ -33,7 +33,7 @@ const PALETTE = {
 };
 
 const REGISTER_URL =
-  "https://medgap.camp-coding.site/api/student/auth/register";
+  "https://api.medgap.net/api/student/auth/register";
 
 export default function AddStudentModal({ open, onCancel, onSuccess, id }) {
   const [form] = Form.useForm();

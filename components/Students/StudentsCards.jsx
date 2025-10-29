@@ -52,9 +52,9 @@ const getInitials = (name = "") =>
     .slice(0, 2)
     .toUpperCase();
 
-const ADD_MODULES_ENDPOINT = "https://medgap.camp-coding.site/api/student/auth/modules";
+const ADD_MODULES_ENDPOINT = "https://api.medgap.net/api/student/auth/modules";
 const DELETE_MODULE_ENDPOINT = (moduleId) =>
-  `https://medgap.camp-coding.site/api/student/auth/modules/${moduleId}`;
+  `https://api.medgap.net/api/student/auth/modules/${moduleId}`;
 
 export default function StudentsCards({
   students = [],

@@ -333,12 +333,12 @@ const FlashCards = () => {
         // subtitle={`${totalItems} flashcards available for "${all_flashcards?.data?.topic?.topic_name}"`}
         extra={
           <div className="flex items-center space-x-4">
-            <Button type="default" icon={<Upload className="w-4 h-4" />}>
+            {/* <Button type="default" icon={<Upload className="w-4 h-4" />}>
               Import
             </Button>
             <Button type="secondary" icon={<Download className="w-4 h-4" />}>
               Export
-            </Button>
+            </Button> */}
             <Button onClick={openCreateModal} type="primary" size="large" icon={<Plus className="w-5 h-5" />}>
               Add New Flashcard
             </Button>

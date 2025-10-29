@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BookOpen,
   Calendar,
@@ -35,10 +35,15 @@ const UnitCard = ({
   const toFlashcards = () => to("flashcards");
   const toDigital = () => to(`digital-library`);
 
+  useEffect(() => {
+    console.log(unit);
+  } , [unit])
+
   const topicsArr = unit?.topics ?? [];
-  const digitalCount = topicsArr.reduce((sum, t) => sum + (t.digital_library || 0), 0);
+  const digitalCount = unit?.ebooks_count || 0;
   const flashcardsCount = topicsArr.reduce((sum, t) => sum + (t.flashcards || 0), 0);
   const topicsCount = unit?.topics_count ?? topicsArr.length;
+  const questionCount  = unit?.questions ?? 0
 
   const menu = {
     items: [
@@ -125,7 +130,7 @@ const UnitCard = ({
             >
               <div className="mb-2">
                 <span className="text-3xl font-bold" style={{ color: "#8B5CF6" }}>
-                  {unit?.questions ?? 0}
+                  {questionCount}
                 </span>
               </div>
               <div className="flex items-center justify-center space-x-1">

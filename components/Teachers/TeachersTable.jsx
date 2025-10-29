@@ -137,6 +137,7 @@ const TeachersTable = ({
     try {
       if (onChangeStatus) {
         await onChangeStatus(teacher, newStatus);
+        window.location.relod()
       } else {
         message.success(`Teacher set to ${newStatus}`);
       }

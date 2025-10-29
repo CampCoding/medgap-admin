@@ -420,12 +420,12 @@ const ExamManager = () => {
         subtitle={"Create, monitor, and analyze your examination system"}
         extra={
           <div className="flex items-center space-x-4">
-            <Button type="default" icon={<Upload className="w-4 h-4" />}>
+            {/* <Button type="default" icon={<Upload className="w-4 h-4" />}>
               Import
             </Button>
             <Button type="secondary" icon={<Download className="w-4 h-4" />}>
               Export
-            </Button>
+            </Button> */}
             <Link href={"/exams/new"}>
             <Button
               type="primary"

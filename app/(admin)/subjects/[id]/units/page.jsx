@@ -100,10 +100,11 @@ const Units = () => {
       lastUpdated: unit.updated_at || unit.created_at,
       topics: Array.isArray(unit.topics) ? unit.topics : [],
       students: 0, // placeholder
-      questions: unit.questions_count || 0,
+      questions: unit?.questions_count || 0,
       topics_count: unit.topics_count || 0,
       created_at: unit.created_at,
       updated_at: unit.updated_at,
+      ebooks_count : unit?.ebooks_count
     }));
   };
 
@@ -511,12 +512,12 @@ const Units = () => {
         subtitle={"Organize and manage your teaching subjects"}
         extra={
           <div className="flex items-center space-x-4">
-            <Button type="default" icon={<Upload className="w-4 h-4" />}>
+            {/* <Button type="default" icon={<Upload className="w-4 h-4" />}>
               Import
             </Button>
             <Button type="secondary" icon={<Download className="w-4 h-4" />}>
               Export
-            </Button>
+            </Button> */}
             <Button
               onClick={() => setNewUnitModal(true)}
               type="primary"

@@ -555,12 +555,12 @@ const ReviewersManagementClient = () => {
         subtitle={"Review and manage reviewers applications and profiles"}
         extra={
           <div className="flex items-center space-x-4">
-            <Button type="default" icon={<Upload className="w-4 h-4" />}>
+            {/* <Button type="default" icon={<Upload className="w-4 h-4" />}>
               Import
             </Button>
             <Button type="secondary" icon={<Download className="w-4 h-4" />}>
               Export
-            </Button>
+            </Button> */}
             <Button
               onClick={() => setAddNewModal(true)}
               type="primary"
@@ -573,7 +573,7 @@ const ReviewersManagementClient = () => {
         }
       />
 
-      <TeacherStats role="reviewer" />
+      <TeacherStats data={reviewers_list?.data?.teachers} role="reviewer" />
 
       <div className="mx-auto">
         {/* 🔎 Global Search (client-side across all fields) */}
@@ -656,7 +656,7 @@ const ReviewersManagementClient = () => {
         )}
 
         {/* No Results */}
-        {!all_reviewers_loading && filteredTeachers.length === 0 && (
+        {/* {!all_reviewers_loading && filteredTeachers.length === 0 && (
           <div className="text-center py-12">
             <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">
@@ -688,7 +688,7 @@ const ReviewersManagementClient = () => {
               </Button>
             )}
           </div>
-        )}
+        )} */}
       </div>
 
       {/* View Teacher Modal */}

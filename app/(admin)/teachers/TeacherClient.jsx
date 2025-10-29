@@ -183,6 +183,7 @@ const TeachersManagementClient = () => {
           if (res?.status == "success") {
             toast.success(res?.message);
             dispatch(handleGetAllTeachers());
+            window.location.reload();
           }
         });
     } catch (error) {
@@ -525,12 +526,12 @@ const TeachersManagementClient = () => {
         subtitle={"Review and manage teacher applications and profiles"}
         extra={
           <div className="flex items-center space-x-4">
-            <Button type="default" icon={<Upload className="w-4 h-4" />}>
+            {/* <Button type="default" icon={<Upload className="w-4 h-4" />}>
               Import
             </Button>
             <Button type="secondary" icon={<Download className="w-4 h-4" />}>
               Export
-            </Button>
+            </Button> */}
             <Button
               onClick={() => setAddNewModal(true)}
               type="primary"
@@ -542,7 +543,7 @@ const TeachersManagementClient = () => {
           </div>
         }
       />
-      <TeacherStats />
+      <TeacherStats  />
       <div className="mx-auto">
         {/* Search and Filters */}
         <SearchAndFilters
@@ -575,69 +576,6 @@ const TeachersManagementClient = () => {
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
-                </select>
-              </div>
-
-              {/* Experience Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Experience
-                </label>
-                <select
-                  value={filters.experience || ""}
-                  onChange={(e) => setFilters(prev => ({...prev, experience: e.target.value}))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">All Experience</option>
-                  <option value="0-2">0-2 years</option>
-                  <option value="3-5">3-5 years</option>
-                  <option value="6-10">6-10 years</option>
-                  <option value="10+">10+ years</option>
-                </select>
-              </div>
-
-              {/* Qualification Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Qualification
-                </label>
-                <input
-                  type="text"
-                  value={filters.qualification || ""}
-                  onChange={(e) => setFilters(prev => ({...prev, qualification: e.target.value}))}
-                  placeholder="Search qualification"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-
-              {/* Join Date Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Join Date
-                </label>
-                <input
-                  type="date"
-                  value={filters.joinDate || ""}
-                  onChange={(e) => setFilters(prev => ({...prev, joinDate: e.target.value}))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-
-              {/* Sort Options */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sort By
-                </label>
-                <select
-                  value={sortBy || ""}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  {sortOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
                 </select>
               </div>
             </div>
@@ -726,7 +664,7 @@ const TeachersManagementClient = () => {
         )}
 
         {/* No Results */}
-        {!all_teachers_loading && filteredTeachers.length === 0 && (
+        {/* {!all_teachers_loading && filteredTeachers.length === 0 && (
           <div className="text-center py-12">
             <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">
@@ -758,7 +696,7 @@ const TeachersManagementClient = () => {
               </Button>
             )}
           </div>
-        )}
+        )} */}
       </div>
 
       {/* View Teacher Modal */}
@@ -827,7 +765,7 @@ const TeachersManagementClient = () => {
                     <Notebook className="mr-2 text-yellow-600" />
                     Modules
                   </Text>
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-2 flex-wrap items-center">
                     {selectedTeacher?._original?.active_modules?.map((item) => (
                       <Tag>{item?.subject_name}</Tag>
                     ))}

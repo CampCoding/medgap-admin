@@ -36,6 +36,7 @@ import {
   Modal,
   Form,
   Tooltip,
+  Switch,
 } from "antd";
 import BreadcrumbsShowcase from "../ui/BreadCrumbs";
 import Button from "../atoms/Button";
@@ -68,6 +69,9 @@ const makeURL = (p) =>
 
 export default function DigitalLibrary({ id, subject, unit, topic }) {
   const dispatch = useDispatch();
+  // under other useState declarations
+  const [isSummaryEdit, setIsSummaryEdit] = useState(false);
+
   const { module_units } = useSelector((state) => state?.modules);
   const {
     ebook_list,
@@ -78,6 +82,8 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
 
   /* --------- viewer & ui state ---------- */
   const [documents, setDocuments] = useState([]);
+  const [isSummaryCreate, setIsSummaryCreate] = useState(false); // <- controlled switch for CREATE modal
+
   const [selectedDocId, setSelectedDocId] = useState(null);
   const currentDoc = useMemo(
     () => documents.find((d) => d.id === selectedDocId) || null,
@@ -159,7 +165,8 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
       : [];
 
     const adapt = (r) => {
-      const pdfUrl = r.file ?? r.fileUrl ?? r.file_url ?? r.pdfUrl ?? r.url ?? "";
+      const pdfUrl =
+        r.file ?? r.fileUrl ?? r.file_url ?? r.pdfUrl ?? r.url ?? "";
       const thumb = r.thumbnail ?? r.thumbnail_url ?? r.cover ?? "";
       const derivedFileName = (() => {
         try {
@@ -182,7 +189,13 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
         : r.custom_indices ?? r.customIndices ?? [];
 
       return {
-        id: r.ebook_id ?? r.id ?? r._id ?? r.book_id ?? Date.now() + Math.random(),
+        type: r?.type ?? "ebook",
+        id:
+          r.ebook_id ??
+          r.id ??
+          r._id ??
+          r.book_id ??
+          Date.now() + Math.random(),
         title: r.book_title ?? r.title ?? "",
         description: r.book_description ?? r.description ?? "",
         author: r.author ?? "",
@@ -415,13 +428,13 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
 
     try {
       // Create a temporary anchor element to trigger download
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = currentDoc.pdfUrl;
       link.download = currentDoc.fileName || `${currentDoc.title}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       message.success("Download started");
     } catch (error) {
       console.error("Download failed:", error);
@@ -487,6 +500,10 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     },
   };
 
+  useEffect(() => {
+    console.log(isSummaryCreate);
+  }, [isSummaryCreate]);
+
   /* -------------- CREATE submit (SAFE) --------------- */
   const handleCreate = async (vals) => {
     if (!uploadedPDF?.file) return message.error("Please upload a PDF");
@@ -506,6 +523,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     form.append("status", vals.status || "active");
     form.append("author", vals.author || "");
     form.append("subject_id", id);
+    form.append("type", isSummaryCreate ? "summary" : "ebook");
 
     if (customIndex.length > 0) {
       customIndex.forEach((item, index) => {
@@ -520,8 +538,14 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
       const res = await dispatch(handleCreateEbook({ body: form })).unwrap();
 
       // ---- ONLY proceed on success ----
-      const statusVal = String(res?.status ?? res?.data?.status ?? "").toLowerCase();
-      const ok = statusVal === "success" || statusVal === "ok" || statusVal === "true" || statusVal === "1";
+      const statusVal = String(
+        res?.status ?? res?.data?.status ?? ""
+      ).toLowerCase();
+      const ok =
+        statusVal === "success" ||
+        statusVal === "ok" ||
+        statusVal === "true" ||
+        statusVal === "1";
       if (!ok) {
         const errMsg =
           res?.message ||
@@ -545,6 +569,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
         : customIndex;
 
       const newItem = {
+        type: r?.type ?? "ebook",
         id: r.ebook_id ?? r.id ?? r._id ?? Date.now(),
         title: r.book_title ?? vals.title,
         description: r.book_description ?? vals.description,
@@ -579,7 +604,8 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
       // re-fetch from server for consistency
       dispatch(handleGetAllEbooks({ subject_id: id }));
       axios.get(
-        (conifgs?.LIVE_BASE_URL || "").toString() + `e-books/list?subject_id=${id}`
+        (conifgs?.LIVE_BASE_URL || "").toString() +
+          `e-books/list?subject_id=${id}`
       );
     } catch (e) {
       console.error(e);
@@ -599,6 +625,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
       author: currentDoc.author || "",
       status: currentDoc.status || "active",
     });
+    setIsSummaryEdit((currentDoc?.type || "ebook") === "summary");
 
     setCustomIndex(
       (currentDoc.customIndices || []).map((x) => ({
@@ -613,6 +640,10 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     setEditThumb(null);
     setEditOpen(true);
   };
+
+  useEffect(() => {
+    console.log(currentDoc);
+  }, [currentDoc]);
 
   const editPDFUpload = {
     beforeUpload: (file) => {
@@ -674,7 +705,9 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     }
     if (!pageNum || pageNum < 1 || pageNum > (previewTotalPages || 100000)) {
       message.error(
-        `Please enter a valid page number between 1 and ${previewTotalPages || 100000}`
+        `Please enter a valid page number between 1 and ${
+          previewTotalPages || 100000
+        }`
       );
       return;
     }
@@ -729,6 +762,8 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
     form.append("book_description", vals.description);
     form.append("status", vals.status || "active");
     form.append("author", vals.author || "");
+    form.append("type", isSummaryEdit ? "summary" : "ebook");
+
     if (editPDF?.file) form.append("file", editPDF.file);
     if (editThumb?.file) form.append("thumbnail", editThumb.file);
 
@@ -750,10 +785,17 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
         handleEditEBook({ id: editingDoc.id, body: form })
       ).unwrap();
 
-      const statusVal = String(res?.status ?? res?.data?.status ?? "").toLowerCase();
-      const ok = statusVal === "success" || statusVal === "ok" || statusVal === "true" || statusVal === "1";
+      const statusVal = String(
+        res?.status ?? res?.data?.status ?? ""
+      ).toLowerCase();
+      const ok =
+        statusVal === "success" ||
+        statusVal === "ok" ||
+        statusVal === "true" ||
+        statusVal === "1";
       if (!ok) {
         const errMsg = res?.message || res?.data?.message || "Update failed.";
+        dispatch(handleGetAllEbooks())
         message.error(errMsg);
         toast.error(errMsg);
         return;
@@ -779,16 +821,31 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
               type: x.type || "custom",
             }));
 
+      // const updated = {
+      //   id: r.ebook_id ?? r.id ?? r._id ?? editingDoc.id,
+      //   title: r.book_title ?? vals.title,
+      //   description: r.book_description ?? vals.description,
+      //   author: r.author ?? vals.author,
+      //   status: r.status ?? vals.status,
+      //   pdfUrl: makeURL(r.file) || (editPDF?.url || editingDoc.pdfUrl),
+      //   thumbnail:
+      //     makeURL(r.thumbnail) || (editThumb?.url || editingDoc.thumbnail),
+      //   customIndices: updatedIndices,
+      // };
+
       const updated = {
         id: r.ebook_id ?? r.id ?? r._id ?? editingDoc.id,
         title: r.book_title ?? vals.title,
         description: r.book_description ?? vals.description,
         author: r.author ?? vals.author,
         status: r.status ?? vals.status,
-        pdfUrl: makeURL(r.file) || (editPDF?.url || editingDoc.pdfUrl),
+        pdfUrl: makeURL(r.file) || editPDF?.url || editingDoc.pdfUrl,
         thumbnail:
-          makeURL(r.thumbnail) || (editThumb?.url || editingDoc.thumbnail),
+          makeURL(r.thumbnail) || editThumb?.url || editingDoc.thumbnail,
         customIndices: updatedIndices,
+        // NEW: prefer server type, else fall back to the chosen switch value or old value
+        type:
+          r.type ?? (isSummaryEdit ? "summary" : editingDoc.type || "ebook"),
       };
 
       setDocuments((prev) =>
@@ -870,12 +927,14 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
             {currentDoc && (
               <>
                 {/* Download Book Button */}
-                <Button onClick={downloadBookAsPDF}>
-                  <span className="inline-flex items-center gap-2">
-                    <FileDown className="w-4 h-4" />
-                    Download Book
-                  </span>
-                </Button>
+                {currentDoc?.type == "summary" && (
+                  <Button onClick={downloadBookAsPDF}>
+                    <span className="inline-flex items-center gap-2">
+                      <FileDown className="w-4 h-4" />
+                      Download Book
+                    </span>
+                  </Button>
+                )}
                 <Button onClick={openEdit}>
                   <span className="inline-flex items-center gap-2">
                     <Edit className="w-4 h-4" />
@@ -975,9 +1034,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
               <div className="flex items-center gap-2">
                 <Input
                   value={currentPage}
-                  onChange={(e) =>
-                    setCurrentPage(Number(e.target.value) || 1)
-                  }
+                  onChange={(e) => setCurrentPage(Number(e.target.value) || 1)}
                   className="w-12 text-center"
                   size="small"
                 />
@@ -1232,7 +1289,9 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                                 ? "bg-blue-100 text-blue-800"
                                 : "hover:bg-gray-50"
                             } ${
-                              item.type === "summary" ? "border-l-4 border-l-green-500" : ""
+                              item.type === "summary"
+                                ? "border-l-4 border-l-green-500"
+                                : ""
                             }`}
                           >
                             <FileText className="w-3 h-3 text-green-500 mt-1 flex-shrink-0" />
@@ -1364,7 +1423,12 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
         footer={null}
         width={900}
       >
-        <Form form={uploadForm} layout="vertical" onFinish={handleCreate} className="py-4">
+        <Form
+          form={uploadForm}
+          layout="vertical"
+          onFinish={handleCreate}
+          className="py-4"
+        >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* left form */}
             <div>
@@ -1373,7 +1437,10 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                 name="title"
                 rules={[{ required: true, message: "Title is required" }]}
               >
-                <Input placeholder="Medical Anatomy Fundamentals" size="large" />
+                <Input
+                  placeholder="Medical Anatomy Fundamentals"
+                  size="large"
+                />
               </Form.Item>
 
               <Form.Item
@@ -1381,7 +1448,10 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                 name="description"
                 rules={[{ required: true, message: "Description is required" }]}
               >
-                <TextArea rows={4} placeholder="Comprehensive guide to human anatomy…" />
+                <TextArea
+                  rows={4}
+                  placeholder="Comprehensive guide to human anatomy…"
+                />
               </Form.Item>
 
               <Form.Item label="Author" name="author">
@@ -1410,8 +1480,21 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
 
             {/* right: uploads & custom index */}
             <div className="border-l border-gray-200 pl-6">
+              <Form.Item label="Summary Type">
+                <Switch
+                  checked={isSummaryCreate}
+                  onChange={setIsSummaryCreate}
+                  checkedChildren="Summary"
+                  unCheckedChildren="Normal"
+                />
+              </Form.Item>
+
               <Form.Item label="Thumbnail Image" required>
-                <AntUpload.Dragger {...handleImageUpload} multiple={false} style={{ height: 120 }}>
+                <AntUpload.Dragger
+                  {...handleImageUpload}
+                  multiple={false}
+                  style={{ height: 120 }}
+                >
                   {uploadedImage ? (
                     <div className="flex items-center justify-center h-full">
                       <img
@@ -1419,20 +1502,28 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         alt="Preview"
                         className="h-16 w-12 object-cover rounded"
                       />
-                      <div className="ml-2 text-sm text-green-600">Image selected</div>
+                      <div className="ml-2 text-sm text-green-600">
+                        Image selected
+                      </div>
                     </div>
                   ) : (
                     <>
                       <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm">Click or drag image here</p>
-                      <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG up to 5MB
+                      </p>
                     </>
                   )}
                 </AntUpload.Dragger>
               </Form.Item>
 
               <Form.Item label="PDF Document" required>
-                <AntUpload.Dragger {...handlePDFUpload} multiple={false} style={{ height: 120 }}>
+                <AntUpload.Dragger
+                  {...handlePDFUpload}
+                  multiple={false}
+                  style={{ height: 120 }}
+                >
                   {uploadedPDF ? (
                     <div className="flex flex-col items-center justify-center h-full">
                       <FileText className="w-8 h-8 text-green-500 mb-2" />
@@ -1441,27 +1532,33 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                       </p>
                       <p className="text-xs text-gray-500">
                         {uploadedPDF.size} •{" "}
-                        {previewTotalPages ? `${previewTotalPages} pages` : "Loading…"}
+                        {previewTotalPages
+                          ? `${previewTotalPages} pages`
+                          : "Loading…"}
                       </p>
                     </div>
                   ) : (
                     <>
                       <UploadIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm font-medium">Click or drag PDF here</p>
+                      <p className="text-sm font-medium">
+                        Click or drag PDF here
+                      </p>
                       <p className="text-xs text-gray-500">PDF up to 50MB</p>
                     </>
                   )}
                 </AntUpload.Dragger>
               </Form.Item>
 
-    
-
               {/* Custom Index Management */}
               <div className="mt-4 border-t pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700">Custom Index</h4>
-                    <p className="text-xs text-gray-500">Add custom table of contents entries</p>
+                    <h4 className="text-sm font-medium text-gray-700">
+                      Custom Index
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      Add custom table of contents entries
+                    </p>
                   </div>
 
                   {/* html button to avoid form submit */}
@@ -1483,7 +1580,10 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         placeholder="Index title (e.g., Chapter 1: Introduction)"
                         value={newIndexEntry.title}
                         onChange={(e) =>
-                          setNewIndexEntry((s) => ({ ...s, title: e.target.value }))
+                          setNewIndexEntry((s) => ({
+                            ...s,
+                            title: e.target.value,
+                          }))
                         }
                         size="small"
                       />
@@ -1495,7 +1595,10 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           max={previewTotalPages}
                           value={newIndexEntry.page}
                           onChange={(e) =>
-                            setNewIndexEntry((s) => ({ ...s, page: e.target.value }))
+                            setNewIndexEntry((s) => ({
+                              ...s,
+                              page: e.target.value,
+                            }))
                           }
                           className="w-20"
                           size="small"
@@ -1505,12 +1608,15 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           type="number"
                           value={newIndexEntry.order}
                           onChange={(e) =>
-                            setNewIndexEntry((s) => ({ ...s, order: e.target.value }))
+                            setNewIndexEntry((s) => ({
+                              ...s,
+                              order: e.target.value,
+                            }))
                           }
                           className="w-20"
                           size="small"
                         />
-                        <Select
+                        {/* <Select
                           value={newIndexEntry.type}
                           onChange={(value) =>
                             setNewIndexEntry((s) => ({ ...s, type: value }))
@@ -1520,7 +1626,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         >
                           <Option value="custom">Custom</Option>
                           <Option value="summary">Summary</Option>
-                        </Select>
+                        </Select> */}
                         {/* html button to avoid form submit */}
                         <button
                           type="button"
@@ -1546,7 +1652,9 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         <div
                           key={item.id || index}
                           className={`flex items-center justify-between p-2 border-b last:border-b-0 hover:bg-gray-50 ${
-                            item.type === "summary" ? "border-l-4 border-l-green-500" : ""
+                            item.type === "summary"
+                              ? "border-l-4 border-l-green-500"
+                              : ""
                           }`}
                         >
                           <div className="flex-1">
@@ -1567,39 +1675,15 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                             type="button"
                             className="text-red-600 hover:bg-red-50 rounded px-2 py-1"
                             onClick={() =>
-                              setCustomIndex((prev) => prev.filter((_, i) => i !== index))
+                              setCustomIndex((prev) =>
+                                prev.filter((_, i) => i !== index)
+                              )
                             }
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
                       ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Auto-generated Outline Preview */}
-                {previewOutlines.length > 0 && (
-                  <div className="mt-3">
-                    <div className="text-xs font-medium text-gray-600 mb-2">
-                      Auto-detected Outline:
-                    </div>
-                    <div className="max-h-24 overflow-y-auto border rounded text-xs p-2 bg-gray-50">
-                      {previewOutlines.slice(0, 3).map((outline, index) => (
-                        <div
-                          key={index}
-                          className="truncate"
-                          style={{ marginLeft: `${outline.level * 8}px` }}
-                          title={outline.title}
-                        >
-                          {outline.title} (Page {outline.page})
-                        </div>
-                      ))}
-                      {previewOutlines.length > 3 && (
-                        <div className="text-gray-500 text-xs mt-1">
-                          + {previewOutlines.length - 3} more entries...
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -1619,7 +1703,12 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                 setPreviewOutlines([]);
                 setCustomIndex([]);
                 setShowCustomIndexForm(false);
-                setNewIndexEntry({ title: "", page: "", order: 0, type: "custom" });
+                setNewIndexEntry({
+                  title: "",
+                  page: "",
+                  order: 0,
+                  type: "custom",
+                });
               }}
               className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50"
             >
@@ -1651,10 +1740,18 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left form */}
             <div>
-              <Form.Item label="Title" name="title" rules={[{ required: true }]}>
+              <Form.Item
+                label="Title"
+                name="title"
+                rules={[{ required: true }]}
+              >
                 <Input />
               </Form.Item>
-              <Form.Item label="Description" name="description" rules={[{ required: true }]}>
+              <Form.Item
+                label="Description"
+                name="description"
+                rules={[{ required: true }]}
+              >
                 <TextArea rows={4} />
               </Form.Item>
               <div className="grid grid-cols-2 gap-4">
@@ -1673,23 +1770,39 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
 
             {/* Right: file uploads & custom index */}
             <div className="border-l border-gray-200 pl-6">
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="  gap-4 mb-4">
                 <div>
-                  <div className="text-sm font-medium mb-1">Replace PDF (optional)</div>
-                  <AntUpload.Dragger {...editPDFUpload} multiple={false} style={{ height: 110 }}>
+                  <div className="text-sm font-medium mb-1">
+                    Replace PDF (optional)
+                  </div>
+                  <AntUpload.Dragger
+                    {...editPDFUpload}
+                    multiple={false}
+                    style={{ height: 110 }}
+                  >
                     {editPDF ? (
-                      <div className="py-6 text-green-600">{editPDF.file.name}</div>
+                      <div className="py-6 text-green-600">
+                        {editPDF.file.name}
+                      </div>
                     ) : (
                       <>
                         <UploadIcon className="w-7 h-7 text-gray-400 mx-auto mb-2" />
-                        <div className="text-xs text-gray-500">Drop PDF here to replace</div>
+                        <div className="text-xs text-gray-500">
+                          Drop PDF here to replace
+                        </div>
                       </>
                     )}
                   </AntUpload.Dragger>
                 </div>
                 <div>
-                  <div className="text-sm font-medium mb-1">Replace Thumbnail (optional)</div>
-                  <AntUpload.Dragger {...editThumbUpload} multiple={false} style={{ height: 110 }}>
+                  <div className="text-sm font-medium mb-1">
+                    Replace Thumbnail (optional)
+                  </div>
+                  <AntUpload.Dragger
+                    {...editThumbUpload}
+                    multiple={false}
+                    style={{ height: 110 }}
+                  >
                     {editThumb ? (
                       <div className="flex items-center justify-center h-full">
                         <img
@@ -1697,23 +1810,38 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           className="h-16 w-12 object-cover rounded"
                           alt="Thumbnail preview"
                         />
-                        <div className="ml-2 text-sm text-green-600">Selected</div>
+                        <div className="ml-2 text-sm text-green-600">
+                          Selected
+                        </div>
                       </div>
                     ) : (
                       <>
                         <ImageIcon className="w-7 h-7 text-gray-400 mx-auto mb-2" />
-                        <div className="text-xs text-gray-500">Drop image here to replace</div>
+                        <div className="text-xs text-gray-500">
+                          Drop image here to replace
+                        </div>
                       </>
                     )}
                   </AntUpload.Dragger>
                 </div>
               </div>
 
+              <Form.Item label="Type">
+                <Switch
+                  checked={isSummaryEdit}
+                  onChange={setIsSummaryEdit}
+                  checkedChildren="Summary"
+                  unCheckedChildren="Normal"
+                />
+              </Form.Item>
+
               {/* Custom Index Management in Edit Modal */}
               <div className="mt-4 border-t pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700">Custom Index</h4>
+                    <h4 className="text-sm font-medium text-gray-700">
+                      Custom Index
+                    </h4>
                     <p className="text-xs text-gray-500">
                       Edit, delete, or add table of contents entries
                     </p>
@@ -1738,7 +1866,10 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         placeholder="Index title"
                         value={newIndexEntry.title}
                         onChange={(e) =>
-                          setNewIndexEntry((s) => ({ ...s, title: e.target.value }))
+                          setNewIndexEntry((s) => ({
+                            ...s,
+                            title: e.target.value,
+                          }))
                         }
                         size="small"
                       />
@@ -1750,7 +1881,10 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           max={editingDoc?.pages || 1000}
                           value={newIndexEntry.page}
                           onChange={(e) =>
-                            setNewIndexEntry((s) => ({ ...s, page: e.target.value }))
+                            setNewIndexEntry((s) => ({
+                              ...s,
+                              page: e.target.value,
+                            }))
                           }
                           className="w-20"
                           size="small"
@@ -1760,12 +1894,15 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           type="number"
                           value={newIndexEntry.order}
                           onChange={(e) =>
-                            setNewIndexEntry((s) => ({ ...s, order: e.target.value }))
+                            setNewIndexEntry((s) => ({
+                              ...s,
+                              order: e.target.value,
+                            }))
                           }
                           className="w-20"
                           size="small"
                         />
-                        <Select
+                        {/* <Select
                           value={newIndexEntry.type}
                           onChange={(value) =>
                             setNewIndexEntry((s) => ({ ...s, type: value }))
@@ -1775,7 +1912,7 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                         >
                           <Option value="custom">Custom</Option>
                           <Option value="summary">Summary</Option>
-                        </Select>
+                        </Select> */}
                         {/* html button to avoid form submit */}
                         <button
                           type="button"
@@ -1793,20 +1930,30 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                 {/* Editable list */}
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {customIndex.length === 0 && (
-                    <div className="text-xs text-gray-500">No custom indices yet.</div>
+                    <div className="text-xs text-gray-500">
+                      No custom indices yet.
+                    </div>
                   )}
                   {customIndex.map((item, i) => (
                     <div
                       key={item.id ?? `row-${i}`}
                       className={`p-2 border rounded-lg ${
-                        item._deleted ? "bg-red-50 border-red-200" : "bg-gray-50"
-                      } ${item.type === "summary" ? "border-l-4 border-l-green-500" : ""}`}
+                        item._deleted
+                          ? "bg-red-50 border-red-200"
+                          : "bg-gray-50"
+                      } ${
+                        item.type === "summary"
+                          ? "border-l-4 border-l-green-500"
+                          : ""
+                      }`}
                     >
                       <div className="grid grid-cols-[1fr_90px_90px_90px_110px] gap-2 items-center">
                         <Input
                           value={item.title}
                           disabled={item._deleted}
-                          onChange={(e) => updateIndexField(i, "title", e.target.value)}
+                          onChange={(e) =>
+                            updateIndexField(i, "title", e.target.value)
+                          }
                           size="small"
                           className={item._deleted ? "line-through" : ""}
                         />
@@ -1840,15 +1987,17 @@ export default function DigitalLibrary({ id, subject, unit, topic }) {
                           placeholder="Order"
                           className={item._deleted ? "line-through" : ""}
                         />
-                        <Select
+                        {/* <Select
                           value={item.type || "custom"}
                           disabled={item._deleted}
-                          onChange={(value) => updateIndexField(i, "type", value)}
+                          onChange={(value) =>
+                            updateIndexField(i, "type", value)
+                          }
                           size="small"
                         >
                           <Option value="custom">Custom</Option>
                           <Option value="summary">Summary</Option>
-                        </Select>
+                        </Select> */}
                         <div className="flex items-center justify-end gap-2">
                           {!item._deleted ? (
                             <>

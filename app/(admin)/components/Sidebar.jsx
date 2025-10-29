@@ -207,7 +207,7 @@ export default function Sidebar() {
 
   const menuItems = [
     { name: "Notifications", icon: Bell, badge: notifications, path: "/notifications" },
-    { name: "Settings", icon: Settings, path: "/settings" },
+    // { name: "Settings", icon: Settings, path: "/settings" },
   ];
 
   const selectedSubjectData = availableModules.find(
