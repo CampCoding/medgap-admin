@@ -10,7 +10,9 @@ import {
   CreditCard,
   Loader2,
   RefreshCcw,
+  Download,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 const getValueFromPath = (object, path) => {
   if (!path || !object) return undefined;
@@ -80,6 +82,10 @@ const postmanDocumentedRoutes = {
     path: "exams",
     defaults: { limit: 25000 },
   },
+  modules: {
+    path: "modules",
+    defaults: { limit: 25000 },
+  },
 };
 
 const createResourceConfig = (route, config) => {
@@ -122,12 +128,23 @@ const resourceCatalog = {
       `Exam #${item?.id ?? item?.exam_id ?? ""}`,
     getValue: (item) => item?.id ?? item?.exam_id ?? item?.code,
   }),
+  module: createResourceConfig(postmanDocumentedRoutes.modules, {
+    arrayHints: ["data.modules", "data.data", "modules"],
+    getLabel: (item) =>
+      item?.name ||
+      item?.title ||
+      item?.module_name ||
+      item?.subject_name ||
+      `Module #${item?.module_id ?? item?.id ?? item?.code ?? ""}`,
+    getValue: (item) => item?.module_id ?? item?.id ?? item?.code,
+  }),
 };
 
 const typeOptions = [
   { label: "Books", value: "book", helper: "IDs of books to unlock" },
   { label: "Topics", value: "topic", helper: "IDs of topics to unlock" },
   { label: "Exams", value: "exam", helper: "IDs of exams to unlock" },
+  { label: "Modules", value: "module", helper: "IDs of modules to unlock" },
 ];
 
 const statusOptions = [
@@ -140,6 +157,7 @@ const sourceKeyByType = {
   book: "books",
   topic: "topics",
   exam: "exams",
+  module: "modules",
 };
 
 const formatDate = (value) => {
@@ -171,6 +189,7 @@ const SubscriptionCardsClient = () => {
   const [resourceSearch, setResourceSearch] = useState("");
   const [resourceLoading, setResourceLoading] = useState(false);
   const [resourceError, setResourceError] = useState("");
+  const [newlyCreatedCards, setNewlyCreatedCards] = useState([]);
   const linkedResourcesRef = useRef(formData.linkedResources);
   const resourceTypeSupported = Boolean(resourceCatalog[formData.type]);
 
@@ -185,7 +204,8 @@ const SubscriptionCardsClient = () => {
     const response = await fetchData({ url: listEndpoint, method: "GET" });
 
     if (response?.status === "success") {
-      setCards(Array.isArray(response?.data) ? response.data : []);
+      const fetchedCards = Array.isArray(response?.data) ? response.data : [];
+      setCards(fetchedCards);
       setPagination(response?.pagination ?? null);
     } else {
       const message =
@@ -364,6 +384,11 @@ const SubscriptionCardsClient = () => {
       payload.code = formData.code.trim();
     }
 
+    // Store existing card IDs before creation to filter new ones later
+    const existingCardIds = new Set(
+      cards.map((card) => card.card_id || card.id || card.code).filter(Boolean)
+    );
+
     setIsCreating(true);
     const response = await fetchData({
       url: "subscription-cards/create",
@@ -374,13 +399,39 @@ const SubscriptionCardsClient = () => {
 
     if (response?.status === "success") {
       toast.success(response?.message || "Subscription card created.");
+      
       setFormData((prev) => ({
         ...prev,
         code: "",
         linkedResources: [],
         number_of_cards: 1,
       }));
-      loadCards();
+      
+      // Reload cards and filter newly created ones
+      // Fetch all cards (not filtered) to properly identify newly created ones
+      const reloadResponse = await fetchData({ url: "subscription-cards", method: "GET" });
+      if (reloadResponse?.status === "success") {
+        const allCards = Array.isArray(reloadResponse?.data) ? reloadResponse.data : [];
+        
+        // Filter newly created cards from returned data
+        const newlyCreated = allCards.filter(
+          (card) => !existingCardIds.has(card.card_id || card.id || card.code)
+        );
+        
+        if (newlyCreated.length > 0) {
+          setNewlyCreatedCards(newlyCreated);
+        }
+        
+        // Update the cards list based on current filter
+        loadCards();
+      } else {
+        // Fallback: try to get from response data if available
+        const createdCards = Array.isArray(response?.data) ? response.data : [];
+        if (createdCards.length > 0) {
+          setNewlyCreatedCards(createdCards);
+        }
+        loadCards();
+      }
       return;
     }
 
@@ -398,6 +449,40 @@ const SubscriptionCardsClient = () => {
     }
   };
 
+  const exportToExcel = () => {
+    if (!newlyCreatedCards || newlyCreatedCards.length === 0) {
+      toast.warning("No newly created cards to export. Please create cards first.");
+      return;
+    }
+
+    // Prepare data for Excel export
+    const exportData = newlyCreatedCards.map((card) => ({
+      Code: card.code || "-",
+      Type: card.type || "-",
+      Resources: card?.source
+        ? Object.entries(card.source)
+            .map(([key, value]) => `${key}: ${(value || []).join(", ")}`)
+            .join(" | ")
+        : "-",
+      "End Date": formatDate(card.end_date),
+      Status: card.status || "-",
+      "Created At": formatDate(card.created_at),
+    }));
+
+    // Create workbook and worksheet
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Subscription Cards");
+
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().split("T")[0];
+    const filename = `subscription-cards-${timestamp}.xlsx`;
+
+    // Write and download
+    XLSX.writeFile(wb, filename);
+    toast.success(`Exported ${newlyCreatedCards.length} card(s) to Excel.`);
+  };
+
   return (
     <section className="space-y-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -412,27 +497,38 @@ const SubscriptionCardsClient = () => {
             </span>
           </h1>
           <p className="text-slate-600 mt-2 max-w-3xl">
-            Generate card batches for books, topics, or exams and track every
+            Generate card batches for books, topics, exams, or modules and track every
             active code in one place.
           </p>
         </div>
-        <button
-          onClick={loadCards}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 disabled:opacity-60"
-          disabled={isLoadingList}
-        >
-          {isLoadingList ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Refreshing
-            </>
-          ) : (
-            <>
-              <RefreshCcw className="w-4 h-4" />
-              Refresh
-            </>
+        <div className="flex items-center gap-2">
+          {newlyCreatedCards.length > 0 && (
+            <button
+              onClick={exportToExcel}
+              className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
+            >
+              <Download className="w-4 h-4" />
+              Export Created ({newlyCreatedCards.length})
+            </button>
           )}
-        </button>
+          <button
+            onClick={loadCards}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 disabled:opacity-60"
+            disabled={isLoadingList}
+          >
+            {isLoadingList ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Refreshing
+              </>
+            ) : (
+              <>
+                <RefreshCcw className="w-4 h-4" />
+                Refresh
+              </>
+            )}
+          </button>
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-2">
