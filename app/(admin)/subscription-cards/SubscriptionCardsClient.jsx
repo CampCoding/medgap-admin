@@ -175,6 +175,10 @@ const SubscriptionCardsClient = () => {
   const [pagination, setPagination] = useState(null);
   const [listError, setListError] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(500);
+  const [resourceFilterId, setResourceFilterId] = useState(null);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
@@ -194,9 +198,90 @@ const SubscriptionCardsClient = () => {
   const resourceTypeSupported = Boolean(resourceCatalog[formData.type]);
 
   const listEndpoint = useMemo(() => {
-    if (!statusFilter || statusFilter === "all") return "subscription-cards";
-    return `subscription-cards?status=${statusFilter}`;
-  }, [statusFilter]);
+    const params = {};
+
+    if (statusFilter && statusFilter !== "all") {
+      params.status = statusFilter;
+    }
+
+    if (typeFilter && typeFilter !== "all") {
+      params.type = typeFilter;
+    }
+
+    if (page) {
+      params.page = page;
+      params.per_page = perPage;
+      params.limit = perPage;
+    }
+
+    return buildResourceUrl("subscription-cards", params);
+  }, [statusFilter, typeFilter, page, perPage]);
+
+  const resourceFilterOptions = useMemo(() => {
+    const map = new Map();
+
+    cards.forEach((card) => {
+      // Respect current type filter when building options
+      if (typeFilter !== "all" && card.type && card.type !== typeFilter) {
+        return;
+      }
+
+      if (Array.isArray(card.resources) && card.resources.length) {
+        card.resources.forEach((resource) => {
+          const id = resource.id ?? resource.resource_id;
+          if (!id || map.has(id)) return;
+          const label =
+            resource.name ||
+            resource.title ||
+            resource.code ||
+            `#${id}`;
+          map.set(id, { value: id, label });
+        });
+      } else if (card.source && typeof card.source === "object") {
+        const sourceValues = Object.values(card.source).flat();
+        sourceValues.forEach((id) => {
+          if (id === undefined || id === null || map.has(id)) return;
+          map.set(id, { value: id, label: `#${id}` });
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [cards, typeFilter]);
+
+  const visibleCards = useMemo(() => {
+    if (!resourceFilterId) return cards;
+
+    const idAsNumber = Number(resourceFilterId);
+
+    return cards.filter((card) => {
+      // Check resources array
+      if (Array.isArray(card.resources) && card.resources.length) {
+        const match = card.resources.some((resource) => {
+          const rid = resource.id ?? resource.resource_id;
+          return (
+            rid === resourceFilterId ||
+            rid === idAsNumber
+          );
+        });
+        if (match) return true;
+      }
+
+      // Check source ids
+      if (card.source && typeof card.source === "object") {
+        const sourceValues = Object.values(card.source).flat();
+        if (
+          sourceValues.some(
+            (rid) => rid === resourceFilterId || rid === idAsNumber
+          )
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+  }, [cards, resourceFilterId]);
 
   const loadCards = useCallback(async () => {
     setIsLoadingList(true);
@@ -531,7 +616,7 @@ const SubscriptionCardsClient = () => {
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-6">
         <form
           onSubmit={handleCreateCard}
           className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl shadow-teal-900/5 backdrop-blur"
@@ -717,19 +802,66 @@ const SubscriptionCardsClient = () => {
               </p>
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <label className="text-xs font-semibold uppercase text-slate-500">
-                Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="expired">Expired</option>
-                <option value="all">All</option>
-              </select>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold uppercase text-slate-500">
+                  Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => {
+                    setStatusFilter(event.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="expired">Expired</option>
+                  <option value="all">All</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold uppercase text-slate-500">
+                  Type
+                </label>
+                <select
+                  value={typeFilter}
+                  onChange={(event) => {
+                    setTypeFilter(event.target.value);
+                    setResourceFilterId(null);
+                    setPage(1);
+                  }}
+                  className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                >
+                  <option value="all">All</option>
+                  <option value="book">Books</option>
+                  <option value="topic">Topics</option>
+                  <option value="exam">Exams</option>
+                  <option value="module">Modules</option>
+                </select>
+              </div>
+
+              {resourceFilterOptions.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold uppercase text-slate-500">
+                    Resource
+                  </label>
+                  <Select
+                    allowClear
+                    showSearch
+                    size="middle"
+                    className="min-w-[220px]"
+                    placeholder="All resources"
+                    options={resourceFilterOptions}
+                    value={resourceFilterId}
+                    onChange={(value) => {
+                      setResourceFilterId(value || null);
+                    }}
+                    optionFilterProp="label"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -743,20 +875,21 @@ const SubscriptionCardsClient = () => {
               <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-6 text-sm text-red-700">
                 {listError}
               </div>
-            ) : cards.length ? (
+            ) : visibleCards.length ? (
               <table className="min-w-full divide-y divide-slate-100">
                 <thead>
                   <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <th className="py-3 pr-4">Code</th>
                     <th className="py-3 pr-4">Type</th>
                     <th className="py-3 pr-4">Resources</th>
+                    <th className="py-3 pr-4">Usage</th>
                     <th className="py-3 pr-4">End date</th>
                     <th className="py-3 pr-4">Status</th>
                     <th className="py-3 pr-4">Created</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
-                  {cards.map((card) => (
+                  {visibleCards.map((card) => (
                     <tr key={card.card_id} className="align-top">
                       <td className="py-4 pr-4">
                         <div className="flex items-center gap-2">
@@ -776,11 +909,84 @@ const SubscriptionCardsClient = () => {
                         {card.type || "-"}
                       </td>
                       <td className="py-4 pr-4 text-slate-600">
-                        {card?.source
+                        {Array.isArray(card.resources) && card.resources.length
+                          ? card.resources
+                              .map((resource) => {
+                                const identifier =
+                                  resource.name ||
+                                  resource.title ||
+                                  resource.code ||
+                                  `#${resource.id}`;
+                                return identifier;
+                              })
+                              .join(", ")
+                          : card?.source
                           ? Object.entries(card.source)
-                              .map(([key, value]) => `${key}: ${(value || []).join(", ")}`)
+                              .map(
+                                ([key, value]) =>
+                                  `${key}: ${(value || []).join(", ")}`
+                              )
                               .join(" | ")
                           : "-"}
+                      </td>
+                      <td className="py-4 pr-4 text-slate-600">
+                        {typeof card.used_count === "number" ? (
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <p>
+                                <span className="font-semibold">
+                                  Used count:
+                                </span>{" "}
+                                {card.used_count}
+                              </p>
+                              <p>
+                                <span className="font-semibold">Used:</span>{" "}
+                                {card.used ? "Yes" : "No"}
+                              </p>
+                              {card.last_used_at && (
+                                <p>
+                                  <span className="font-semibold">
+                                    Last used:
+                                  </span>{" "}
+                                  {formatDate(card.last_used_at)}
+                                </p>
+                              )}
+                            </div>
+
+                            {Array.isArray(card.usage) && card.usage.length > 0 && (
+                              <div className="border-t border-slate-100 pt-2">
+                                <p className="text-xs font-semibold text-slate-500">
+                                  Used students
+                                </p>
+                                <ul className="mt-1 space-y-1 max-h-32 overflow-y-auto pr-1">
+                                  {card.usage.map((entry, index) => (
+                                    <li key={index} className="text-xs text-slate-600">
+                                      <span className="font-medium">
+                                        {entry.student_name || "Unknown student"}
+                                      </span>
+                                      {entry.resource_name && (
+                                        <>
+                                          {" "}
+                                          – {entry.resource_name}
+                                        </>
+                                      )}
+                                      {entry.used_at && (
+                                        <>
+                                          {" "}
+                                          (<span>
+                                            {formatDate(entry.used_at)}
+                                          </span>)
+                                        </>
+                                      )}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          "-"
+                        )}
                       </td>
                       <td className="py-4 pr-4 text-slate-600">
                         {formatDate(card.end_date)}
@@ -818,10 +1024,59 @@ const SubscriptionCardsClient = () => {
           </div>
 
           {pagination && (
-            <p className="mt-4 text-xs text-slate-500">
-              Showing page {pagination.page} of {pagination.totalPages || 1}.{" "}
-              Total records: {pagination.total ?? cards.length}.
-            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                  disabled={isLoadingList || page <= 1}
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                  disabled={
+                    isLoadingList ||
+                    (pagination.totalPages &&
+                      page >= Number(pagination.totalPages))
+                  }
+                  onClick={() =>
+                    setPage((prev) =>
+                      pagination.totalPages
+                        ? Math.min(prev + 1, Number(pagination.totalPages))
+                        : prev + 1
+                    )
+                  }
+                >
+                  Next
+                </button>
+              </div>
+
+              <p>
+                Showing page {pagination.page || page} of{" "}
+                {pagination.totalPages || "?"}. Total records:{" "}
+                {pagination.total ?? cards.length}.
+              </p>
+
+              <div className="flex items-center gap-2">
+                <span>Per page</span>
+                <select
+                  className="rounded-2xl border border-slate-200 bg-white px-2 py-1 text-xs focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  value={perPage}
+                  onChange={(event) => {
+                    setPerPage(Number(event.target.value) || 20);
+                    setPage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
           )}
         </div>
       </div>
